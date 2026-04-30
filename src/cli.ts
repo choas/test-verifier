@@ -14,6 +14,10 @@ Commands:
                       Analyze test changes and generate findings
                         --staged       Check staged (index) changes vs HEAD
                         --uncommitted  Check all uncommitted changes vs HEAD
+  list [--status <s>] [--all]
+                      List findings (default: unresolved only)
+                        --status <s>   Filter by status (pending|needs_fix|rejected|approved|resolved)
+                        --all          Show all findings including resolved
   enrich              Enrich pending findings with LLM analysis
   review              Interactively review pending findings
   approve <id>        Approve a pending finding
@@ -102,6 +106,31 @@ switch (command) {
         ? "uncommitted"
         : "committed";
     await check(process.cwd(), mode);
+    break;
+  }
+
+  case "list": {
+    const { list } = await import("./commands/list");
+    const listFlags = parseArgs({
+      args: Bun.argv.slice(3),
+      options: {
+        status: { type: "string" },
+        all: { type: "boolean", default: false },
+      },
+      allowPositionals: true,
+      strict: false,
+    });
+    const validStatuses = ["pending", "approved", "rejected", "needs_fix", "resolved"];
+    const statusVal = listFlags.values.status as string | undefined;
+    if (statusVal && !validStatuses.includes(statusVal)) {
+      console.error(`Invalid status: ${statusVal}`);
+      console.error(`Valid statuses: ${validStatuses.join(", ")}`);
+      process.exit(1);
+    }
+    await list({
+      status: statusVal as any,
+      all: listFlags.values.all as boolean,
+    });
     break;
   }
 
