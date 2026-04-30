@@ -73,7 +73,9 @@ const auditInner = z.object({
   archiveRetentionDays: z.number().int().positive().default(365),
 });
 
-const cryptoInner = z.object({});
+const cryptoInner = z.object({
+  signing: z.enum(["ed25519", "gpg"]).default("ed25519"),
+});
 
 export const configSchema = z.object({
   testGlobs: z
