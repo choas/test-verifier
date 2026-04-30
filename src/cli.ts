@@ -18,6 +18,7 @@ Commands:
   review              Interactively review pending findings
   approve <id>        Approve a pending finding
   reject <id>         Reject a pending finding
+  commit              Commit .test-verifier/ changes with a descriptive message
   audit verify        Verify audit trail integrity
   audit compact       Compact old approved findings into archives
   setup-hooks         Install git hooks (pre-commit, pre-push)
@@ -125,6 +126,12 @@ switch (command) {
     }
     const { reject } = await import("./commands/reject");
     await reject();
+    break;
+  }
+
+  case "commit": {
+    const { commit } = await import("./commands/commit");
+    await commit();
     break;
   }
 
