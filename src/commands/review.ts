@@ -1,7 +1,6 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { createInterface } from "node:readline/promises";
-import { $ } from "bun";
 import {
   listByStatus,
   statusDir,
@@ -11,8 +10,9 @@ import {
   moveToNeedsFix,
 } from "../audit-folder";
 import { parseMarkdown, type ParsedMarkdown } from "../markdown-reader";
-import type { Severity } from "../types";
 import { VerificationStore } from "../db/verification-store";
+import { signFile } from "../crypto/sign-verify";
+import { loadSigningContext } from "./shared";
 
 const RESET = "\x1b[0m";
 const BOLD = "\x1b[1m";
@@ -41,31 +41,6 @@ function colorDiffLine(line: string): string {
   if (line.startsWith("-")) return `${RED}${line}${RESET}`;
   if (line.startsWith("@@")) return `${CYAN}${line}${RESET}`;
   return line;
-}
-
-async function getGitEmail(cwd: string): Promise<string> {
-  const result = await $`git config user.email`.cwd(cwd).quiet().nothrow();
-  return result.stdout.toString().trim() || "unknown";
-}
-
-function updateMarkdownStatus(
-  raw: string,
-  status: "approved" | "rejected" | "needs_fix",
-  approver: string,
-): string {
-  let updated = raw.replace(/^status:\s*.+$/m, `status: ${status}`);
-
-  const decisionHeader = "## Decision";
-  const idx = updated.indexOf(decisionHeader);
-  if (idx !== -1) {
-    const afterHeader = idx + decisionHeader.length;
-    const nextSection = updated.indexOf("\n## ", afterHeader);
-    const end = nextSection === -1 ? updated.length : nextSection;
-    const decisionBody = `\n\n- **Status:** ${status}\n- **Reviewer:** ${approver}\n- **Date:** ${new Date().toISOString()}\n`;
-    updated = updated.slice(0, afterHeader) + decisionBody + updated.slice(end);
-  }
-
-  return updated;
 }
 
 interface ReviewableFile {
@@ -159,7 +134,7 @@ export async function review(cwd: string = process.cwd()): Promise<void> {
   const BG_MAGENTA = "\x1b[45m";
 
   const rl = createInterface({ input: process.stdin, output: process.stdout });
-  const email = await getGitEmail(cwd);
+  const { email, privateKey } = await loadSigningContext(cwd);
   const store = new VerificationStore(auditDir(cwd));
 
   let approvedCount = 0;
@@ -198,28 +173,31 @@ export async function review(cwd: string = process.cwd()): Promise<void> {
 
       switch (answer) {
         case "a": {
-          const updated = updateMarkdownStatus(file.raw, "approved", email);
+          const rationale = (await rl.question(`  ${DIM}Rationale:${RESET} `)).trim() || "approved via interactive review";
+          const updated = signFile(privateKey, file.raw, "approved", email, rationale);
           await writeFile(file.filePath, updated);
           await moveToApproved(cwd, file.filename);
-          store.updateStatus(file.parsed.stub.id, "approved", email);
+          store.updateStatus(file.parsed.stub.id, "approved", email, rationale);
           approvedCount++;
           console.log(`  ${BG_GREEN}${BOLD} APPROVED ${RESET}`);
           break;
         }
         case "r": {
-          const updated = updateMarkdownStatus(file.raw, "rejected", email);
+          const rationale = (await rl.question(`  ${DIM}Rationale:${RESET} `)).trim() || "rejected via interactive review";
+          const updated = signFile(privateKey, file.raw, "rejected", email, rationale);
           await writeFile(file.filePath, updated);
           await moveToRejected(cwd, file.filename);
-          store.updateStatus(file.parsed.stub.id, "rejected", email);
+          store.updateStatus(file.parsed.stub.id, "rejected", email, rationale);
           rejectedCount++;
           console.log(`  ${BG_RED}${BOLD} REJECTED ${RESET}`);
           break;
         }
         case "f": {
-          const updated = updateMarkdownStatus(file.raw, "needs_fix", email);
+          const rationale = (await rl.question(`  ${DIM}Rationale:${RESET} `)).trim() || "needs fix via interactive review";
+          const updated = signFile(privateKey, file.raw, "needs_fix", email, rationale);
           await writeFile(file.filePath, updated);
           await moveToNeedsFix(cwd, file.filename);
-          store.updateStatus(file.parsed.stub.id, "needs_fix", email);
+          store.updateStatus(file.parsed.stub.id, "needs_fix", email, rationale);
           needsFixCount++;
           console.log(`  ${BG_MAGENTA}${BOLD} NEEDS FIX ${RESET}`);
           break;

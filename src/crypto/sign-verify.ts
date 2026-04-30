@@ -53,12 +53,18 @@ export function parseDecisionSection(fileContent: string): string {
   return fileContent.slice(idx + marker.length).trim();
 }
 
-export function signFile(privateKeyPem: string, fileContent: string, approver: string, rationale: string): string {
+export function signFile(
+  privateKeyPem: string,
+  fileContent: string,
+  status: string,
+  approver: string,
+  rationale: string,
+): string {
   const fm = parseFrontMatter(fileContent);
   const diffHash = fm["diff_hash"];
   if (!diffHash) throw new Error("No diff_hash in front matter");
 
-  const decisionText = `approved by ${approver}\nrationale: ${rationale}`;
+  const decisionText = `${status} by ${approver}\nrationale: ${rationale}`;
   const sig = sign(privateKeyPem, { diffHash, decisionText });
 
   const marker = "## Decision";
@@ -67,7 +73,7 @@ export function signFile(privateKeyPem: string, fileContent: string, approver: s
 
   const before = fileContent.slice(0, idx + marker.length);
   const decision = `\n\n${decisionText}\nsignature: ed25519:${sig}\n`;
-  return before + decision;
+  return (before + decision).replace(/^status: pending$/m, `status: ${status}`);
 }
 
 export function verifyFile(publicKeyPem: string, fileContent: string): boolean {

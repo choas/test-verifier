@@ -121,7 +121,7 @@ describe("parseDecisionSection", () => {
 
 describe("signFile and verifyFile roundtrip", () => {
   test("signs a stub file and verifies it", () => {
-    const signed = signFile(kp.privateKey, STUB_FILE, "dev@example.com", "safe to skip, covered by integration tests");
+    const signed = signFile(kp.privateKey, STUB_FILE, "approved", "dev@example.com", "safe to skip, covered by integration tests");
     expect(signed).toContain("## Decision");
     expect(signed).toContain("approved by dev@example.com");
     expect(signed).toContain("rationale: safe to skip, covered by integration tests");
@@ -132,18 +132,18 @@ describe("signFile and verifyFile roundtrip", () => {
 
   test("verification fails with wrong key", () => {
     const other = generateKeyPair();
-    const signed = signFile(kp.privateKey, STUB_FILE, "dev@example.com", "looks fine");
+    const signed = signFile(kp.privateKey, STUB_FILE, "approved", "dev@example.com", "looks fine");
     expect(verifyFile(other.publicKey, signed)).toBe(false);
   });
 
   test("verification fails if decision text is tampered", () => {
-    const signed = signFile(kp.privateKey, STUB_FILE, "dev@example.com", "legitimate reason");
+    const signed = signFile(kp.privateKey, STUB_FILE, "approved", "dev@example.com", "legitimate reason");
     const tampered = signed.replace("legitimate reason", "tampered reason");
     expect(verifyFile(kp.publicKey, tampered)).toBe(false);
   });
 
   test("verification fails if front matter hash is tampered", () => {
-    const signed = signFile(kp.privateKey, STUB_FILE, "dev@example.com", "good reason");
+    const signed = signFile(kp.privateKey, STUB_FILE, "approved", "dev@example.com", "good reason");
     const tampered = signed.replace(
       "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
       "sha256:0000000000000000000000000000000000000000000000000000000000000000",
@@ -153,7 +153,7 @@ describe("signFile and verifyFile roundtrip", () => {
 
   test("throws if file has no diff_hash", () => {
     const noDiffHash = STUB_FILE.replace("diff_hash: sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\n", "");
-    expect(() => signFile(kp.privateKey, noDiffHash, "dev@example.com", "reason")).toThrow("No diff_hash");
+    expect(() => signFile(kp.privateKey, noDiffHash, "approved", "dev@example.com", "reason")).toThrow("No diff_hash");
   });
 
   test("throws if signed file has no signature", () => {

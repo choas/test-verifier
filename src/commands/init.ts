@@ -1,18 +1,6 @@
-import { $ } from "bun";
-import { getCurrentCommitSha } from "../git";
+import { getCurrentCommitSha, getGitEmail } from "../git";
 import { ensureAuditDir, writeHead } from "../audit-folder";
 import { initKeys, publicKeyPath } from "../crypto/keys";
-
-async function getGitEmail(cwd: string): Promise<string> {
-  const result = await $`git config user.email`.cwd(cwd).quiet().nothrow();
-  const email = result.stdout.toString().trim();
-  if (result.exitCode !== 0 || !email) {
-    throw new Error(
-      "git user.email is not configured. Run: git config user.email you@example.com",
-    );
-  }
-  return email;
-}
 
 export async function init(cwd: string = process.cwd()): Promise<void> {
   const email = await getGitEmail(cwd);

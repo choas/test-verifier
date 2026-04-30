@@ -1,53 +1,29 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { $ } from "bun";
-import { statusDir, moveToNeedsFix, listByStatus, auditDir } from "../audit-folder";
-import { getOriginUrl, getRepoId, loadPrivateKey } from "../crypto/keys";
-import { sign } from "../crypto/sign-verify";
-import { parseFrontMatter } from "../crypto/sign-verify";
+import { statusDir, moveToNeedsFix, auditDir, listByStatus } from "../audit-folder";
+import { signFile, parseFrontMatter } from "../crypto/sign-verify";
+import { parseMarkdown } from "../markdown-reader";
 import { VerificationStore } from "../db/verification-store";
-
-async function getGitEmail(cwd: string): Promise<string> {
-  const result = await $`git config user.email`.cwd(cwd).quiet().nothrow();
-  const email = result.stdout.toString().trim();
-  if (result.exitCode !== 0 || !email) {
-    throw new Error(
-      "git user.email is not configured. Run: git config user.email you@example.com",
-    );
-  }
-  return email;
-}
+import { loadSigningContext, findPendingFile } from "./shared";
 
 async function markOneNeedsFix(
   cwd: string,
   filename: string,
   rationale: string,
   email: string,
-  privateKey: Uint8Array,
+  privateKey: string,
   store: VerificationStore,
 ): Promise<string> {
   const filePath = join(statusDir(cwd, "pending"), filename);
   const content = await readFile(filePath, "utf-8");
+  parseMarkdown(content);
 
-  const fm = parseFrontMatter(content);
-  const diffHash = fm["diff_hash"];
-  if (!diffHash) throw new Error(`No diff_hash in front matter for ${filename}`);
-
-  const decisionText = `needs_fix by ${email}\nrationale: ${rationale}`;
-  const sig = sign(privateKey, { diffHash, decisionText });
-
-  const marker = "## Decision";
-  const idx = content.indexOf(marker);
-  if (idx === -1) throw new Error(`No Decision section found in ${filename}`);
-
-  const before = content.slice(0, idx + marker.length);
-  const decision = `\n\n${decisionText}\nsignature: ed25519:${sig}\n`;
-  const signed = before + decision;
-  const updated = signed.replace(/^status: pending$/m, "status: needs_fix");
+  const updated = signFile(privateKey, content, "needs_fix", email, rationale);
 
   await writeFile(filePath, updated);
   const dest = await moveToNeedsFix(cwd, filename);
 
+  const fm = parseFrontMatter(content);
   const stubId = fm["id"] || filename.replace(/\.md$/, "");
   store.updateStatus(stubId, "needs_fix", email, rationale);
 
@@ -71,22 +47,12 @@ export async function needsFix(cwd: string = process.cwd()): Promise<void> {
   }
   const rationale = Bun.argv[rationaleIdx + 1];
 
-  const email = await getGitEmail(cwd);
-  const originUrl = await getOriginUrl(cwd);
-  const repoId = getRepoId(originUrl);
-  const privateKey = await loadPrivateKey(repoId);
-  if (!privateKey) {
-    console.error(
-      `No private key found for this repo (repo-id: ${repoId}). Run 'bunx test-verifier init' first.`,
-    );
-    process.exit(1);
-  }
-
-  const pending = await listByStatus(cwd, "pending");
+  const { email, privateKey } = await loadSigningContext(cwd);
 
   const store = new VerificationStore(auditDir(cwd));
   try {
     if (allFlag) {
+      const pending = await listByStatus(cwd, "pending");
       if (pending.length === 0) {
         console.log("No pending findings to mark as needs-fix.");
         return;
@@ -105,15 +71,7 @@ export async function needsFix(cwd: string = process.cwd()): Promise<void> {
       return;
     }
 
-    const filename = pending.find(
-      (f) => f === `${findingId}.md` || f.replace(/\.md$/, "") === findingId,
-    );
-    if (!filename) {
-      console.error(`No pending finding with id '${findingId}'.`);
-      console.error(`Pending files: ${pending.length === 0 ? "(none)" : pending.join(", ")}`);
-      process.exit(1);
-    }
-
+    const { filename } = await findPendingFile(cwd, findingId!);
     const dest = await markOneNeedsFix(cwd, filename, rationale, email, privateKey, store);
 
     console.log(`Needs fix: ${findingId}`);

@@ -1,6 +1,17 @@
 import { $ } from "bun";
 import { assertSafeRelativePath } from "./path-guard";
 
+export async function getGitEmail(cwd: string): Promise<string> {
+  const result = await $`git config user.email`.cwd(cwd).quiet().nothrow();
+  const email = result.stdout.toString().trim();
+  if (result.exitCode !== 0 || !email) {
+    throw new Error(
+      "git user.email is not configured. Run: git config user.email you@example.com",
+    );
+  }
+  return email;
+}
+
 export async function getCurrentCommitSha(cwd?: string): Promise<string> {
   const result = await $`git rev-parse HEAD`.cwd(cwd ?? ".").quiet();
   if (result.exitCode !== 0) {
