@@ -1,6 +1,6 @@
-import { existsSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync, chmodSync } from "node:fs";
 import { join, dirname } from "node:path";
-import { $ } from "bun";
+import { execFileSync } from "node:child_process";
 
 const HOOKS = ["pre-commit", "pre-push"] as const;
 
@@ -13,7 +13,8 @@ export async function setupHooks(cwd: string = process.cwd()): Promise<void> {
 
   if (!existsSync(huskyDir)) {
     console.log("Initializing Husky...");
-    await $`npx husky init`.cwd(cwd).quiet();
+    mkdirSync(huskyDir, { recursive: true });
+    execFileSync("git", ["config", "core.hooksPath", ".husky"], { cwd });
   }
 
   const templateDir = findTemplateDir();
@@ -27,9 +28,9 @@ export async function setupHooks(cwd: string = process.cwd()): Promise<void> {
       process.exit(1);
     }
 
-    const content = await Bun.file(src).text();
-    await Bun.write(dest, content);
-    await $`chmod +x ${dest}`.quiet();
+    const content = readFileSync(src, "utf-8");
+    writeFileSync(dest, content);
+    chmodSync(dest, 0o755);
 
     console.log(`Installed ${hook} → .husky/${hook}`);
   }
