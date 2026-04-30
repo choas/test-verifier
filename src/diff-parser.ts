@@ -26,6 +26,18 @@ const DIFF_HEADER_QUOTED_RE = /^diff --git "a\/(.+)" "b\/(.+)"$/;
 const DIFF_HEADER_RE = /^diff --git a\/(.+) b\/(.+)$/;
 const HUNK_HEADER_RE = /^@@\s+-(\d+)(?:,(\d+))?\s+\+(\d+)(?:,(\d+))?\s+@@(.*)$/;
 
+function assertNoDotDot(filePath: string): void {
+  const segments = filePath.replace(/\\/g, "/").split("/");
+  for (const seg of segments) {
+    if (seg === "..") {
+      throw new Error(`Path traversal (..) in diff path: ${filePath}`);
+    }
+  }
+  if (filePath.startsWith("/") || filePath.startsWith("\\")) {
+    throw new Error(`Absolute path in diff not allowed: ${filePath}`);
+  }
+}
+
 export function parseDiff(diffStr: string): FileDiff[] {
   if (!diffStr.trim()) return [];
 
@@ -41,7 +53,11 @@ export function parseDiff(diffStr: string): FileDiff[] {
 
     const diffMatch = line.match(DIFF_HEADER_QUOTED_RE) ?? line.match(DIFF_HEADER_RE);
     if (diffMatch) {
-      currentFile = { oldPath: diffMatch[1], newPath: diffMatch[2], hunks: [] };
+      const oldPath = diffMatch[1];
+      const newPath = diffMatch[2];
+      assertNoDotDot(oldPath);
+      assertNoDotDot(newPath);
+      currentFile = { oldPath, newPath, hunks: [] };
       files.push(currentFile);
       currentHunk = null;
       continue;

@@ -1,4 +1,5 @@
 import { $ } from "bun";
+import { assertSafeRelativePath } from "./path-guard";
 
 export async function getCurrentCommitSha(cwd?: string): Promise<string> {
   const result = await $`git rev-parse HEAD`.cwd(cwd ?? ".").quiet();
@@ -94,6 +95,7 @@ export async function getFileFromIndex(
   filePath: string,
   cwd?: string,
 ): Promise<string> {
+  assertSafeRelativePath(filePath);
   const dir = cwd ?? ".";
   const result = await $`git show :${filePath}`.cwd(dir).quiet().nothrow();
   if (result.exitCode !== 0) return "";

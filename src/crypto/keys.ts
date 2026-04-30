@@ -1,6 +1,8 @@
 import { createHash, generateKeyPairSync, createPublicKey, createPrivateKey } from "node:crypto";
 import { readFile, writeFile, mkdir, chmod, stat } from "node:fs/promises";
 import { join } from "node:path";
+import { assertSafeFilename } from "../path-guard";
+
 export interface KeyPair {
   publicKey: string;
   privateKey: string;
@@ -24,10 +26,12 @@ export function publicKeyDir(repoRoot: string): string {
 }
 
 export function privateKeyPath(repoId: string): string {
+  assertSafeFilename(repoId);
   return join(privateKeyDir(), `${repoId}.key`);
 }
 
 export function publicKeyPath(repoRoot: string, email: string): string {
+  assertSafeFilename(email);
   return join(publicKeyDir(repoRoot), `${email}.pub`);
 }
 
