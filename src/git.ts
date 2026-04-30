@@ -102,7 +102,7 @@ export async function getFileFromIndex(
 
 function isTestFile(filePath: string): boolean {
   const p = filePath.replace(/\\/g, "/");
-  if (/\.(test|spec)\.[tj]sx?$/.test(p)) return true;
+  if (/\.(test|spec)\.(ts|tsx|js|jsx|mts|mjs|svelte\.ts)$/.test(p)) return true;
   if (/\/__tests__\//.test(p)) return true;
   if (/\/tests?\//.test(p) && /\.[tj]sx?$/.test(p)) return true;
   return false;

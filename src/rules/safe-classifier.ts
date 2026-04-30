@@ -94,10 +94,10 @@ function isFormattingOnly(before: string, after: string): boolean {
 
 function stripTypeAnnotations(source: string): string {
   return source
-    .replace(/^\s*import\s+type\s+\{[^}]*\}\s+from\s+['"][^'"]*['"];?\s*$/gm, "")
-    .replace(/^\s*(export\s+)?type\s+\w+\s*=\s*[^;]+;\s*$/gm, "")
+    .replace(/^\s*import\s+type\s+(?:\{[^}]*\}|\w+)\s+from\s+['"][^'"]*['"];?\s*$/gm, "")
+    .replace(/^\s*(export\s+)?type\s+\w+(?:<[^>]*>)?\s*=\s*[^;]+;\s*$/gm, "")
     .replace(/((?:const|let|var)\s+)(\w+)\s*:\s*[^=\n]+(?=\s*=)/g, "$1$2")
-    .replace(/(\))\s*:\s*[^=>{}\n]+(?=\s*(?:=>|\{))/g, "$1");
+    .replace(/(\))\s*:\s*[^={}\n]+(?=\s*(?:=>|\{))/g, "$1");
 }
 
 function isTypeAnnotationOnly(before: string, after: string): boolean {

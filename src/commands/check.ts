@@ -58,7 +58,7 @@ function splitRawDiffByFile(rawDiff: string): Map<string, string> {
   const headers: { path: string; start: number }[] = [];
 
   for (let i = 0; i < lines.length; i++) {
-    const m = lines[i].match(/^diff --git a\/(.+) b\/(.+)$/);
+    const m = lines[i].match(/^diff --git "a\/(.+)" "b\/(.+)"$/) ?? lines[i].match(/^diff --git a\/(.+) b\/(.+)$/);
     if (m) {
       headers.push({ path: m[2], start: i });
     }
