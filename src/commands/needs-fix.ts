@@ -18,10 +18,50 @@ async function getGitEmail(cwd: string): Promise<string> {
   return email;
 }
 
+async function markOneNeedsFix(
+  cwd: string,
+  filename: string,
+  rationale: string,
+  email: string,
+  privateKey: Uint8Array,
+): Promise<string> {
+  const filePath = join(statusDir(cwd, "pending"), filename);
+  const content = await readFile(filePath, "utf-8");
+
+  const fm = parseFrontMatter(content);
+  const diffHash = fm["diff_hash"];
+  if (!diffHash) throw new Error(`No diff_hash in front matter for ${filename}`);
+
+  const decisionText = `needs_fix by ${email}\nrationale: ${rationale}`;
+  const sig = sign(privateKey, { diffHash, decisionText });
+
+  const marker = "## Decision";
+  const idx = content.indexOf(marker);
+  if (idx === -1) throw new Error(`No Decision section found in ${filename}`);
+
+  const before = content.slice(0, idx + marker.length);
+  const decision = `\n\n${decisionText}\nsignature: ed25519:${sig}\n`;
+  const signed = before + decision;
+  const updated = signed.replace(/^status: pending$/m, "status: needs_fix");
+
+  await writeFile(filePath, updated);
+  const dest = await moveToNeedsFix(cwd, filename);
+
+  const store = new VerificationStore(auditDir(cwd));
+  const stubId = fm["id"] || filename.replace(/\.md$/, "");
+  store.updateStatus(stubId, "needs_fix", email, rationale);
+  store.close();
+
+  return dest;
+}
+
 export async function needsFix(cwd: string = process.cwd()): Promise<void> {
-  const findingId = Bun.argv[3];
-  if (!findingId) {
+  const allFlag = Bun.argv.includes("--all");
+  const findingId = allFlag ? null : Bun.argv[3];
+
+  if (!allFlag && !findingId) {
     console.error("Usage: test-verifier needs-fix <finding-id> --rationale <text>");
+    console.error("       test-verifier needs-fix --all --rationale <text>");
     process.exit(1);
   }
 
@@ -31,19 +71,6 @@ export async function needsFix(cwd: string = process.cwd()): Promise<void> {
     process.exit(1);
   }
   const rationale = Bun.argv[rationaleIdx + 1];
-
-  const pending = await listByStatus(cwd, "pending");
-  const filename = pending.find(
-    (f) => f === `${findingId}.md` || f.replace(/\.md$/, "") === findingId,
-  );
-  if (!filename) {
-    console.error(`No pending finding with id '${findingId}'.`);
-    console.error(`Pending files: ${pending.length === 0 ? "(none)" : pending.join(", ")}`);
-    process.exit(1);
-  }
-
-  const filePath = join(statusDir(cwd, "pending"), filename);
-  const content = await readFile(filePath, "utf-8");
 
   const email = await getGitEmail(cwd);
   const originUrl = await getOriginUrl(cwd);
@@ -56,29 +83,37 @@ export async function needsFix(cwd: string = process.cwd()): Promise<void> {
     process.exit(1);
   }
 
-  const fm = parseFrontMatter(content);
-  const diffHash = fm["diff_hash"];
-  if (!diffHash) throw new Error("No diff_hash in front matter");
+  const pending = await listByStatus(cwd, "pending");
 
-  const decisionText = `needs_fix by ${email}\nrationale: ${rationale}`;
-  const sig = sign(privateKey, { diffHash, decisionText });
+  if (allFlag) {
+    if (pending.length === 0) {
+      console.log("No pending findings to mark as needs-fix.");
+      return;
+    }
 
-  const marker = "## Decision";
-  const idx = content.indexOf(marker);
-  if (idx === -1) throw new Error("No Decision section found");
+    let count = 0;
+    for (const filename of pending) {
+      const dest = await markOneNeedsFix(cwd, filename, rationale, email, privateKey);
+      const id = filename.replace(/\.md$/, "");
+      console.log(`Needs fix: ${id}`);
+      console.log(`  Moved to: ${dest}`);
+      count++;
+    }
+    console.log(`\n${count} finding(s) marked as needs-fix.`);
+    console.log(`Run 'test-verifier check' after fixing to auto-resolve.`);
+    return;
+  }
 
-  const before = content.slice(0, idx + marker.length);
-  const decision = `\n\n${decisionText}\nsignature: ed25519:${sig}\n`;
-  const signed = before + decision;
-  const updated = signed.replace(/^status: pending$/m, "status: needs_fix");
+  const filename = pending.find(
+    (f) => f === `${findingId}.md` || f.replace(/\.md$/, "") === findingId,
+  );
+  if (!filename) {
+    console.error(`No pending finding with id '${findingId}'.`);
+    console.error(`Pending files: ${pending.length === 0 ? "(none)" : pending.join(", ")}`);
+    process.exit(1);
+  }
 
-  await writeFile(filePath, updated);
-  const dest = await moveToNeedsFix(cwd, filename);
-
-  const store = new VerificationStore(auditDir(cwd));
-  const stubId = fm["id"] || findingId;
-  store.updateStatus(stubId, "needs_fix", email, rationale);
-  store.close();
+  const dest = await markOneNeedsFix(cwd, filename, rationale, email, privateKey);
 
   console.log(`Needs fix: ${findingId}`);
   console.log(`  Moved to: ${dest}`);
