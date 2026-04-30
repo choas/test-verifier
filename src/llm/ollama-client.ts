@@ -72,4 +72,33 @@ export class OllamaClient implements LlmClient {
       `Failed to parse LLM response after retry: ${lastError instanceof Error ? lastError.message : String(lastError)}`,
     );
   }
+
+  async chat(prompt: string): Promise<string> {
+    const body = {
+      model: this.config.model,
+      stream: false,
+      messages: [{ role: "user", content: prompt }],
+    };
+
+    const response = await fetch(`${this.config.baseUrl}/api/chat`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(this.config.timeoutMs),
+    });
+
+    if (!response.ok) {
+      throw new Error(
+        `Ollama request failed: ${response.status} ${response.statusText}`,
+      );
+    }
+
+    const json = (await response.json()) as { message?: { content?: string } };
+    const content = json.message?.content;
+    if (!content) {
+      throw new Error("Ollama returned empty response");
+    }
+
+    return content;
+  }
 }
