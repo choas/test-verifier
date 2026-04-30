@@ -121,7 +121,7 @@ async function analyzeWithRetry(
   try {
     return await client.analyze(input);
   } catch (firstError) {
-    if (isMalformedResponseError(firstError)) {
+    if (isMalformedResponseError(firstError) || isTimeoutError(firstError)) {
       return await client.analyze(input);
     }
     throw firstError;
@@ -131,6 +131,11 @@ async function analyzeWithRetry(
 function isMalformedResponseError(e: unknown): boolean {
   if (e instanceof SyntaxError) return true;
   return typeof e === "object" && e !== null && "issues" in e;
+}
+
+function isTimeoutError(e: unknown): boolean {
+  if (e instanceof DOMException && e.name === "TimeoutError") return true;
+  return e instanceof Error && e.message === "The operation timed out.";
 }
 
 async function resolveRelatedProdDiffs(

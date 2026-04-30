@@ -20,7 +20,7 @@ export class OllamaClient implements LlmClient {
     this.config = {
       provider: "ollama",
       baseUrl: config.baseUrl ?? "http://localhost:11434",
-      timeoutMs: config.timeoutMs ?? 120_000,
+      timeoutMs: config.timeoutMs ?? 300_000,
       model: config.model,
     };
   }
