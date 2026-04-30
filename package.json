@@ -1,15 +1,49 @@
 {
   "name": "test-verifier",
   "version": "0.0.1",
+  "description": "A git hook tool that catches weakened tests (skipped, deleted, or downgraded assertions) before they reach your main branch.",
+  "keywords": [
+    "test",
+    "testing",
+    "git-hooks",
+    "pre-commit",
+    "pre-push",
+    "code-review",
+    "test-quality",
+    "claude",
+    "llm",
+    "bun"
+  ],
+  "author": "Lars Gregori",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/choas/test-verifier.git"
+  },
+  "homepage": "https://github.com/choas/test-verifier#readme",
+  "bugs": {
+    "url": "https://github.com/choas/test-verifier/issues"
+  },
   "type": "module",
   "main": "src/index.ts",
   "bin": {
     "test-verifier": "src/cli.ts"
   },
+  "files": [
+    "src/**/*.ts",
+    "!src/**/*.test.ts",
+    "src/hooks/",
+    "README.md",
+    "docs"
+  ],
+  "engines": {
+    "bun": ">=1.0.0"
+  },
   "scripts": {
     "dev": "bun run src/cli.ts",
     "check": "bun run src/cli.ts check",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "bun run typecheck"
   },
   "devDependencies": {
     "@types/bun": "^1.2.13",
