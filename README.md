@@ -115,6 +115,13 @@ bunx test-verifier review
 bunx test-verifier approve <finding-id> --rationale "reason"
 bunx test-verifier reject <finding-id> --rationale "reason"
 
+# Mark a finding as needing a fix (blocks push until resolved)
+bunx test-verifier needs-fix <finding-id> --rationale "reason"
+
+# Show verification history for a test file
+bunx test-verifier history src/utils.test.ts
+bunx test-verifier history src/utils.test.ts --function "should validate input"
+
 # Verify audit trail (used by pre-push hook)
 bunx test-verifier audit verify
 
@@ -132,6 +139,50 @@ Once hooks are installed, the workflow is automatic:
 1. **Commit** -- pre-commit hook runs `check`, creates pending stubs (does not block commit)
 2. **Push** -- pre-push hook runs `enrich` then `verify`, blocks push if unresolved findings remain
 3. **Review** -- run `bunx test-verifier review` to approve or reject findings before pushing
+
+### Needs-Fix Workflow
+
+When a reviewer determines that a test change is wrong and needs to be reverted or corrected, they can mark it as `needs_fix` instead of simply rejecting it. This creates a tracked obligation that blocks push until the issue is resolved.
+
+```
+1. Developer weakens a test (e.g. removes .toBe assertion)
+   └─ pre-commit hook runs `check`, creates a pending finding
+
+2. Reviewer marks the finding as needs-fix
+   └─ bunx test-verifier needs-fix <id> --rationale "toBe removed, must restore"
+   └─ finding moves to .test-verifier/needs_fix/
+
+3. Push is blocked
+   └─ pre-push hook sees needs_fix findings and refuses to push
+
+4. Developer fixes the test (e.g. restores .toBe)
+   └─ pre-commit hook runs `check` again
+   └─ check detects that the original rule no longer triggers
+   └─ finding auto-resolves → moves to .test-verifier/resolved/
+   └─ new finding is linked to the original via parent_verification_id
+
+5. Push succeeds
+   └─ no pending or needs_fix findings remain
+```
+
+The `history` command shows the full verification chain for any test file:
+
+```bash
+$ bunx test-verifier history src/utils.test.ts
+
+Verification history for src/utils.test.ts
+──────────────────────────────────────────
+[NEEDS_FIX] tv_2026-04-30T08-18_abc123  (linked parent)
+  severity: SUSPICIOUS  rule: weakened-assertion
+  reviewer: dev@example.com
+  rationale: toBe removed, must restore
+
+[RESOLVED] tv_2026-04-30T09-01_def456
+  severity: SAFE  rule: safe
+  parent: tv_2026-04-30T08-18_abc123
+```
+
+All verification records are stored in a local SQLite database (`.test-verifier/verifications.sqlite`) for fast querying by test file, function name, or status. The markdown files in the status directories remain the source of truth for signatures and audit trails; the database serves as an index for history and lineage lookups.
 
 ### npm Scripts
 
@@ -160,15 +211,19 @@ src/
   rules/                 # Individual detection rules
   llm/                   # LLM client (Anthropic, Ollama)
   crypto/                # Ed25519 signing for audit trail
+  db/                    # SQLite verification store
   commands/setup-hooks.ts # Git hook installer
 
 .test-verifier/          # Audit directory (created by init)
   pending/               # Findings awaiting review
   approved/              # Approved findings
   rejected/              # Rejected findings
+  needs_fix/             # Findings that require a code fix
+  resolved/              # Needs-fix findings that were resolved
   archive/               # Archived old findings
   keys/                  # Ed25519 keypairs
   cache.sqlite           # LLM response cache
+  verifications.sqlite   # Verification history database
 ```
 
 ## Developer Notes
