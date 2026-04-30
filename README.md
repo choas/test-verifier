@@ -67,7 +67,7 @@ Set up git hooks (optional but recommended):
 bunx test-verifier setup-hooks
 ```
 
-This installs Husky pre-commit and pre-push hooks that run the two-phase pipeline automatically.
+This installs pre-commit and pre-push git hooks that run the two-phase pipeline automatically.
 
 Set your API key if using Claude:
 
@@ -121,7 +121,7 @@ bunx test-verifier audit verify
 # Compact old approved findings into archives
 bunx test-verifier audit compact --before=2025-01-01
 
-# Set up Husky git hooks
+# Set up git hooks
 bunx test-verifier setup-hooks
 ```
 
@@ -160,7 +160,7 @@ src/
   rules/                 # Individual detection rules
   llm/                   # LLM client (Anthropic, Ollama)
   crypto/                # Ed25519 signing for audit trail
-  hooks/                 # Git hook scripts
+  commands/setup-hooks.ts # Git hook installer
 
 .test-verifier/          # Audit directory (created by init)
   pending/               # Findings awaiting review
@@ -170,6 +170,34 @@ src/
   keys/                  # Ed25519 keypairs
   cache.sqlite           # LLM response cache
 ```
+
+## Developer Notes
+
+### Installing the dev version globally
+
+To use your in-progress version of `test-verifier` as a command in any other project, create a global symlink with npm:
+
+```bash
+npm link        # from the test-verifier project root
+```
+
+This puts a `test-verifier` symlink in your global npm bin directory (see `npm prefix -g`/bin), which is normally on `PATH`. Because it's a symlink to your working tree, edits to `src/cli.ts` and friends are picked up immediately -- no reinstall needed.
+
+Verify the link points at your working tree:
+
+```bash
+which test-verifier   # should resolve to a symlink under `npm prefix -g`/bin
+```
+
+> **Important:** call the binary directly (`test-verifier setup-hooks`), **not** `bunx test-verifier ...`. `bunx` ignores `npm link` and downloads `test-verifier@latest` from the npm registry into a temp dir, so you'd be running the published version, not your local checkout. (Symptom: errors with paths like `/private/var/folders/.../bunx-*-test-verifier@latest/...`.)
+
+To remove the global link later:
+
+```bash
+npm unlink -g test-verifier
+```
+
+> Note: `bun link` (run from this project) followed by `bun link test-verifier` (run in a consumer project) wires the package into that project's `node_modules`, but does **not** add the bin to your shell `PATH`. Use `npm link` if you want the command available globally.
 
 ## License
 

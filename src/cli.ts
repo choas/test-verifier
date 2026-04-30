@@ -10,14 +10,17 @@ Usage: test-verifier <command> [options]
 
 Commands:
   init                Initialize test-verifier for this repository
-  check               Analyze test changes and generate findings
+  check [--staged|--uncommitted]
+                      Analyze test changes and generate findings
+                        --staged       Check staged (index) changes vs HEAD
+                        --uncommitted  Check all uncommitted changes vs HEAD
   enrich              Enrich pending findings with LLM analysis
   review              Interactively review pending findings
   approve <id>        Approve a pending finding
   reject <id>         Reject a pending finding
   audit verify        Verify audit trail integrity
   audit compact       Compact old approved findings into archives
-  setup-hooks         Install Husky git hooks (pre-commit, pre-push)
+  setup-hooks         Install git hooks (pre-commit, pre-push)
 
 Options:
   -h, --help          Show help
@@ -73,7 +76,21 @@ switch (command) {
 
   case "check": {
     const { check } = await import("./commands/check");
-    await check();
+    const checkFlags = parseArgs({
+      args: Bun.argv.slice(3),
+      options: {
+        staged: { type: "boolean", default: false },
+        uncommitted: { type: "boolean", default: false },
+      },
+      allowPositionals: true,
+      strict: false,
+    });
+    const mode = checkFlags.values.staged
+      ? "staged"
+      : checkFlags.values.uncommitted
+        ? "uncommitted"
+        : "committed";
+    await check(process.cwd(), mode);
     break;
   }
 

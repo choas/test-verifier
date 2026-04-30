@@ -12,16 +12,16 @@ bunx test-verifier enrich && bunx test-verifier audit verify --no-pending --no-r
 };
 
 export async function setupHooks(cwd: string = process.cwd()): Promise<void> {
-  const huskyDir = join(cwd, ".husky");
+  const hooksDir = join(cwd, ".husky");
 
-  if (!existsSync(huskyDir)) {
+  if (!existsSync(hooksDir)) {
     console.log("Initializing git hooks...");
-    mkdirSync(huskyDir, { recursive: true });
+    mkdirSync(hooksDir, { recursive: true });
     execFileSync("git", ["config", "core.hooksPath", ".husky"], { cwd });
   }
 
   for (const [hook, content] of Object.entries(HOOK_CONTENTS)) {
-    const dest = join(huskyDir, hook);
+    const dest = join(hooksDir, hook);
 
     writeFileSync(dest, content);
     chmodSync(dest, 0o755);
