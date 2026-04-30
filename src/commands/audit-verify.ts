@@ -19,7 +19,15 @@ function extractApprover(fileContent: string): string | null {
   return match ? match[1].trim() : null;
 }
 
+const KNOWN_FLAGS = new Set(["--no-pending", "--no-rejected", "--signatures"]);
+
 export function parseFlags(argv: string[]): AuditVerifyOptions {
+  for (const arg of argv) {
+    if (arg.startsWith("--") && !KNOWN_FLAGS.has(arg)) {
+      console.error(`Unknown option: ${arg}`);
+      process.exit(1);
+    }
+  }
   return {
     noPending: argv.includes("--no-pending"),
     noRejected: argv.includes("--no-rejected"),

@@ -1,7 +1,7 @@
 import { readFile, unlink } from "node:fs/promises";
 import { join } from "node:path";
 import { loadConfig } from "../config";
-import { ensureAuditDir, statusDir, auditDir } from "../audit-folder";
+import { ensureAuditDir, statusDir, auditDir, pruneOldFiles } from "../audit-folder";
 import { parseMarkdown } from "../markdown-reader";
 import { writeFile } from "node:fs/promises";
 
@@ -11,15 +11,26 @@ interface CompactOptions {
   delete?: boolean;
 }
 
+const VALID_PERIODS = ["month", "quarter", "year"] as const;
+
 function parseArgs(argv: string[]): CompactOptions {
   const opts: CompactOptions = {};
   for (const arg of argv) {
     if (arg.startsWith("--period=")) {
-      opts.period = arg.slice("--period=".length) as CompactOptions["period"];
+      const value = arg.slice("--period=".length);
+      if (!(VALID_PERIODS as readonly string[]).includes(value)) {
+        console.error(`Invalid period: ${value}`);
+        console.error(`Valid periods: ${VALID_PERIODS.join(", ")}`);
+        process.exit(1);
+      }
+      opts.period = value as CompactOptions["period"];
     } else if (arg.startsWith("--before=")) {
       opts.before = arg.slice("--before=".length);
     } else if (arg === "--delete") {
       opts.delete = true;
+    } else if (arg.startsWith("--")) {
+      console.error(`Unknown option: ${arg}`);
+      process.exit(1);
     }
   }
   return opts;
@@ -146,4 +157,20 @@ export async function auditCompact(cwd: string = process.cwd()): Promise<void> {
   console.log(
     `test-verifier: compacted ${archivedTotal} approved file(s) into ${grouped.size} archive(s).`,
   );
+
+  const retentionDays = config.audit.archiveRetentionDays;
+  const dirsToprune = [
+    join(auditDir(cwd), "archive"),
+    statusDir(cwd, "resolved"),
+    statusDir(cwd, "rejected"),
+  ];
+  let totalPruned = 0;
+  for (const dir of dirsToprune) {
+    totalPruned += await pruneOldFiles(dir, retentionDays);
+  }
+  if (totalPruned > 0) {
+    console.log(
+      `test-verifier: pruned ${totalPruned} file(s) older than ${retentionDays} days from archive/resolved/rejected.`,
+    );
+  }
 }

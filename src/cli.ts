@@ -98,8 +98,12 @@ switch (command) {
         uncommitted: { type: "boolean", default: false },
       },
       allowPositionals: true,
-      strict: false,
+      strict: true,
     });
+    if (checkFlags.values.staged && checkFlags.values.uncommitted) {
+      console.error("Error: --staged and --uncommitted are mutually exclusive.");
+      process.exit(1);
+    }
     const mode = checkFlags.values.staged
       ? "staged"
       : checkFlags.values.uncommitted
@@ -118,13 +122,17 @@ switch (command) {
         all: { type: "boolean", default: false },
       },
       allowPositionals: true,
-      strict: false,
+      strict: true,
     });
     const validStatuses = ["pending", "approved", "rejected", "needs_fix", "resolved"];
     const statusVal = listFlags.values.status as string | undefined;
     if (statusVal && !validStatuses.includes(statusVal)) {
       console.error(`Invalid status: ${statusVal}`);
       console.error(`Valid statuses: ${validStatuses.join(", ")}`);
+      process.exit(1);
+    }
+    if (statusVal && listFlags.values.all) {
+      console.error("Error: --status and --all are mutually exclusive.");
       process.exit(1);
     }
     await list({
@@ -217,7 +225,7 @@ switch (command) {
         prompt: { type: "string" },
       },
       allowPositionals: true,
-      strict: false,
+      strict: true,
     });
     await testLlm(process.cwd(), testLlmFlags.values.prompt as string | undefined);
     break;
