@@ -3,10 +3,16 @@ import { createHash } from "node:crypto";
 import { join } from "node:path";
 import { LlmResponseSchema, type LlmResponse } from "./llm/types";
 
+const DEFAULT_MAX_AGE_DAYS = 90;
+const DEFAULT_MAX_ENTRIES = 5000;
+
 export class AnalysisCache {
   private db: Database;
 
-  constructor(auditDir: string) {
+  constructor(
+    auditDir: string,
+    opts?: { maxAgeDays?: number; maxEntries?: number },
+  ) {
     const dbPath = join(auditDir, "cache.sqlite");
     this.db = new Database(dbPath, { create: true });
     this.db.run(
@@ -17,6 +23,29 @@ export class AnalysisCache {
         created_at TEXT NOT NULL
       )`,
     );
+    this.prune(
+      opts?.maxAgeDays ?? DEFAULT_MAX_AGE_DAYS,
+      opts?.maxEntries ?? DEFAULT_MAX_ENTRIES,
+    );
+  }
+
+  private prune(maxAgeDays: number, maxEntries: number): void {
+    const cutoff = new Date(
+      Date.now() - maxAgeDays * 24 * 60 * 60 * 1000,
+    ).toISOString();
+    this.db.run("DELETE FROM analysis_cache WHERE created_at < ?", [cutoff]);
+
+    const countRow = this.db
+      .query("SELECT COUNT(*) as cnt FROM analysis_cache")
+      .get() as { cnt: number };
+    if (countRow.cnt > maxEntries) {
+      this.db.run(
+        `DELETE FROM analysis_cache WHERE key NOT IN (
+          SELECT key FROM analysis_cache ORDER BY created_at DESC LIMIT ?
+        )`,
+        [maxEntries],
+      );
+    }
   }
 
   static computeKey(

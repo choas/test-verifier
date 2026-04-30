@@ -1,4 +1,4 @@
-import { readFile, writeFile, mkdir, rename, readdir } from "node:fs/promises";
+import { readFile, writeFile, mkdir, rename, readdir, stat, unlink } from "node:fs/promises";
 import { join } from "node:path";
 import type { StubStatus } from "./types";
 
@@ -72,4 +72,34 @@ async function moveFile(
   await mkdir(statusDir(repoRoot, to), { recursive: true });
   await rename(src, dest);
   return dest;
+}
+
+export async function pruneOldFiles(
+  dir: string,
+  maxAgeDays: number,
+): Promise<number> {
+  let removed = 0;
+  const cutoff = Date.now() - maxAgeDays * 24 * 60 * 60 * 1000;
+  let entries: string[];
+  try {
+    entries = await readdir(dir);
+  } catch {
+    return 0;
+  }
+
+  for (const entry of entries) {
+    if (entry.startsWith(".")) continue;
+    const filePath = join(dir, entry);
+    try {
+      const info = await stat(filePath);
+      if (info.isFile() && info.mtimeMs < cutoff) {
+        await unlink(filePath);
+        removed++;
+      }
+    } catch {
+      // file may have been removed concurrently
+    }
+  }
+
+  return removed;
 }

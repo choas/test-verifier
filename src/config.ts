@@ -69,6 +69,9 @@ const auditInner = z.object({
   compactPeriod: z
     .enum(["month", "quarter", "year", "never"])
     .default("quarter"),
+  cacheTtlDays: z.number().int().positive().default(90),
+  cacheMaxEntries: z.number().int().positive().default(5000),
+  archiveRetentionDays: z.number().int().positive().default(365),
 });
 
 const cryptoInner = z.object({

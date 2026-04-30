@@ -45,7 +45,10 @@ export async function enrich(cwd: string = process.cwd()): Promise<void> {
     process.exit(1);
   }
 
-  const cache = new AnalysisCache(auditDir(cwd));
+  const cache = new AnalysisCache(auditDir(cwd), {
+    maxAgeDays: config.audit.cacheTtlDays,
+    maxEntries: config.audit.cacheMaxEntries,
+  });
   let enrichedCount = 0;
   let errorCount = 0;
 
