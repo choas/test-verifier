@@ -1,3 +1,5 @@
 node_modules/
 .Dirigent/
-.test-verifier/cache.sqlite
+.test-verifier/*.sqlite
+.test-verifier/*.sqlite-shm
+.test-verifier/*.sqlite-wal

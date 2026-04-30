@@ -24,6 +24,7 @@ async function getAuditDirChanges(cwd: string): Promise<AuditChange> {
   for (const line of lines) {
     const status = line.slice(0, 2).trim();
     const file = line.slice(3);
+    if (file.match(/\.sqlite(-shm|-wal)?$/)) continue;
     if (status === "??" || status === "A") {
       added.push(file);
     } else if (status === "M") {
@@ -179,7 +180,7 @@ export async function commit(cwd: string = process.cwd()): Promise<void> {
   const message = buildCommitMessage(changes, summaries);
 
   const dir = auditDir(cwd);
-  const addResult = await $`git add ${dir}`.cwd(cwd).quiet().nothrow();
+  const addResult = await $`git add ${dir} -- ':!*.sqlite' ':!*.sqlite-shm' ':!*.sqlite-wal'`.cwd(cwd).quiet().nothrow();
   if (addResult.exitCode !== 0) {
     console.error(`Failed to stage .test-verifier/: ${addResult.stderr.toString()}`);
     process.exit(1);

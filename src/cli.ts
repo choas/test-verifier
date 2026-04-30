@@ -19,9 +19,11 @@ Commands:
   approve <id>        Approve a pending finding
   reject <id>         Reject a pending finding
   needs-fix <id>      Mark a finding as needing a fix (blocks push)
+                        --all  Mark all pending findings as needs-fix
   history <file>      Show verification history for a test file
                         --function <name>  Filter by test function name
   commit              Commit .test-verifier/ changes with a descriptive message
+  sync                Rebuild local database from .test-verifier/ markdown files
   audit verify        Verify audit trail integrity
   audit compact       Compact old approved findings into archives
   setup-hooks         Install git hooks (pre-commit, pre-push)
@@ -44,7 +46,7 @@ Subcommands:
 
 const APPROVE_USAGE = `Usage: test-verifier approve <finding-id> --rationale <text>`;
 const REJECT_USAGE = `Usage: test-verifier reject <finding-id> --rationale <text>`;
-const NEEDS_FIX_USAGE = `Usage: test-verifier needs-fix <finding-id> --rationale <text>`;
+const NEEDS_FIX_USAGE = `Usage: test-verifier needs-fix <finding-id> --rationale <text>\n       test-verifier needs-fix --all --rationale <text>`;
 const HISTORY_USAGE = `Usage: test-verifier history <test-file> [--function <name>]`;
 
 const args = Bun.argv.slice(2);
@@ -139,7 +141,8 @@ switch (command) {
 
   case "needs-fix": {
     const findingId = positionals[1];
-    if (!findingId) {
+    const hasAllFlag = args.includes("--all");
+    if (!findingId && !hasAllFlag) {
       console.error(NEEDS_FIX_USAGE);
       process.exit(1);
     }
@@ -162,6 +165,12 @@ switch (command) {
   case "commit": {
     const { commit } = await import("./commands/commit");
     await commit();
+    break;
+  }
+
+  case "sync": {
+    const { sync } = await import("./commands/sync");
+    await sync();
     break;
   }
 
