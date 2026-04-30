@@ -115,6 +115,7 @@ switch (command) {
 
   case "list": {
     const { list } = await import("./commands/list");
+    const { StubStatusSchema } = await import("./types");
     const listFlags = parseArgs({
       args: Bun.argv.slice(3),
       options: {
@@ -124,20 +125,24 @@ switch (command) {
       allowPositionals: true,
       strict: true,
     });
-    const validStatuses = ["pending", "approved", "rejected", "needs_fix", "resolved"];
-    const statusVal = listFlags.values.status as string | undefined;
-    if (statusVal && !validStatuses.includes(statusVal)) {
-      console.error(`Invalid status: ${statusVal}`);
-      console.error(`Valid statuses: ${validStatuses.join(", ")}`);
-      process.exit(1);
+    const statusVal = listFlags.values.status;
+    let validatedStatus: import("./types").StubStatus | undefined;
+    if (statusVal !== undefined) {
+      const parsed = StubStatusSchema.safeParse(statusVal);
+      if (!parsed.success) {
+        console.error(`Invalid status: ${statusVal}`);
+        console.error("Valid statuses: pending, approved, rejected, needs_fix, resolved");
+        process.exit(1);
+      }
+      validatedStatus = parsed.data;
     }
-    if (statusVal && listFlags.values.all) {
+    if (validatedStatus && listFlags.values.all) {
       console.error("Error: --status and --all are mutually exclusive.");
       process.exit(1);
     }
     await list({
-      status: statusVal as any,
-      all: listFlags.values.all as boolean,
+      status: validatedStatus,
+      all: listFlags.values.all ?? false,
     });
     break;
   }

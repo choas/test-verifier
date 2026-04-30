@@ -1,3 +1,4 @@
+import { z } from "zod";
 import {
   LlmResponseSchema,
   type LlmClient,
@@ -6,6 +7,12 @@ import {
   type LlmResponse,
 } from "./types";
 import { buildSystemPrompt, buildUserPrompt } from "./prompt-builder";
+
+const OllamaChatResponseSchema = z.object({
+  message: z.object({
+    content: z.string(),
+  }),
+});
 
 function parseResponse(raw: string): LlmResponse {
   const trimmed = raw.trim().replace(/^```json?\n?/, "").replace(/\n?```$/, "");
@@ -55,14 +62,14 @@ export class OllamaClient implements LlmClient {
         );
       }
 
-      const json = (await response.json()) as { message?: { content?: string } };
-      const content = json.message?.content;
-      if (!content) {
+      const json: unknown = await response.json();
+      const chatResult = OllamaChatResponseSchema.safeParse(json);
+      if (!chatResult.success) {
         throw new Error("Ollama returned empty response");
       }
 
       try {
-        return parseResponse(content);
+        return parseResponse(chatResult.data.message.content);
       } catch (e) {
         lastError = e;
       }
@@ -93,12 +100,12 @@ export class OllamaClient implements LlmClient {
       );
     }
 
-    const json = (await response.json()) as { message?: { content?: string } };
-    const content = json.message?.content;
-    if (!content) {
+    const json: unknown = await response.json();
+    const chatResult = OllamaChatResponseSchema.safeParse(json);
+    if (!chatResult.success) {
       throw new Error("Ollama returned empty response");
     }
 
-    return content;
+    return chatResult.data.message.content;
   }
 }

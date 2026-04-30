@@ -1,10 +1,14 @@
 import { Database } from "bun:sqlite";
 import { createHash } from "node:crypto";
 import { join } from "node:path";
+import { z } from "zod";
 import { LlmResponseSchema, type LlmResponse } from "./llm/types";
 
 const DEFAULT_MAX_AGE_DAYS = 90;
 const DEFAULT_MAX_ENTRIES = 5000;
+
+const CountRowSchema = z.object({ cnt: z.number() });
+const CacheRowSchema = z.object({ response: z.string() });
 
 export class AnalysisCache {
   private db: Database;
@@ -35,9 +39,9 @@ export class AnalysisCache {
     ).toISOString();
     this.db.run("DELETE FROM analysis_cache WHERE created_at < ?", [cutoff]);
 
-    const countRow = this.db
-      .query("SELECT COUNT(*) as cnt FROM analysis_cache")
-      .get() as { cnt: number };
+    const countRow = CountRowSchema.parse(
+      this.db.query("SELECT COUNT(*) as cnt FROM analysis_cache").get(),
+    );
     if (countRow.cnt > maxEntries) {
       this.db.run(
         `DELETE FROM analysis_cache WHERE key NOT IN (
@@ -58,10 +62,11 @@ export class AnalysisCache {
   }
 
   get(key: string): LlmResponse | null {
-    const row = this.db
+    const raw = this.db
       .query("SELECT response FROM analysis_cache WHERE key = ?")
-      .get(key) as { response: string } | null;
-    if (!row) return null;
+      .get(key);
+    if (!raw) return null;
+    const row = CacheRowSchema.parse(raw);
     return LlmResponseSchema.parse(JSON.parse(row.response));
   }
 

@@ -1,9 +1,15 @@
+import { z } from "zod";
+
 export enum Severity {
   SAFE = "SAFE",
   LOW = "LOW",
   SUSPICIOUS = "SUSPICIOUS",
   CRITICAL = "CRITICAL",
 }
+
+export const SeveritySchema = z.nativeEnum(Severity);
+
+export const StubStatusSchema = z.enum(["pending", "approved", "rejected", "needs_fix", "resolved"]);
 
 export interface Finding {
   rule: string;
