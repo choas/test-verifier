@@ -1,4 +1,3 @@
-import type { Finding } from "../types";
 import type { LlmPromptInput } from "./types";
 
 export function buildSystemPrompt(): string {
@@ -75,13 +74,3 @@ export function buildUserPrompt(input: LlmPromptInput): string {
   return parts.join("\n\n");
 }
 
-export function findingsToRuleFindings(
-  findings: Finding[],
-): LlmPromptInput["ruleFindings"] {
-  return findings.map((f) => ({
-    rule: f.rule,
-    severity: f.severity,
-    message: f.message,
-    line: f.line,
-  }));
-}

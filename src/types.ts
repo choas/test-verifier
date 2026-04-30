@@ -31,16 +31,3 @@ export interface StubFile {
   parent_verification_id?: string;
 }
 
-export interface AnalysisResult {
-  summary: string;
-  detail: string;
-  concerns: string[];
-  overallSeverity: Severity;
-  tautologyDetected: boolean;
-}
-
-export interface DecisionRecord {
-  approver: string;
-  rationale: string;
-  signature: string;
-}

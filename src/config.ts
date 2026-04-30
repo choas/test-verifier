@@ -65,7 +65,6 @@ const policyInner = z.object({
 });
 
 const auditInner = z.object({
-  folder: z.string().default(".test-verifier"),
   compactPeriod: z
     .enum(["month", "quarter", "year", "never"])
     .default("quarter"),
@@ -74,9 +73,7 @@ const auditInner = z.object({
   archiveRetentionDays: z.number().int().positive().default(365),
 });
 
-const cryptoInner = z.object({
-  signing: z.enum(["ed25519", "gpg"]).default("ed25519"),
-});
+const cryptoInner = z.object({});
 
 export const configSchema = z.object({
   testGlobs: z

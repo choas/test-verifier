@@ -1,6 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { buildSystemPrompt, buildUserPrompt, findingsToRuleFindings } from "./prompt-builder";
-import { Severity, type Finding } from "../types";
+import { buildSystemPrompt, buildUserPrompt } from "./prompt-builder";
 
 describe("buildSystemPrompt", () => {
   test("snapshot", () => {
@@ -131,32 +130,3 @@ describe("buildUserPrompt", () => {
   });
 });
 
-describe("findingsToRuleFindings", () => {
-  test("converts Finding[] to ruleFindings format", () => {
-    const findings: Finding[] = [
-      {
-        rule: "matcher-transition",
-        severity: Severity.CRITICAL,
-        line: 12,
-        message: "toBe → toBeDefined",
-        before: "expect(x).toBe(false)",
-        after: "expect(x).toBeDefined()",
-      },
-      {
-        rule: "assertion-removal",
-        severity: Severity.SUSPICIOUS,
-        line: 20,
-        message: "assertion removed from test 'validates input'",
-        before: "expect(result).toBe(true)",
-        after: "",
-      },
-    ];
-
-    const result = findingsToRuleFindings(findings);
-
-    expect(result).toEqual([
-      { rule: "matcher-transition", severity: "CRITICAL", message: "toBe → toBeDefined", line: 12 },
-      { rule: "assertion-removal", severity: "SUSPICIOUS", message: "assertion removed from test 'validates input'", line: 20 },
-    ]);
-  });
-});
