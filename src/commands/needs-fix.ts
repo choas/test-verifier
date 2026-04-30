@@ -24,6 +24,7 @@ async function markOneNeedsFix(
   rationale: string,
   email: string,
   privateKey: Uint8Array,
+  store: VerificationStore,
 ): Promise<string> {
   const filePath = join(statusDir(cwd, "pending"), filename);
   const content = await readFile(filePath, "utf-8");
@@ -47,10 +48,8 @@ async function markOneNeedsFix(
   await writeFile(filePath, updated);
   const dest = await moveToNeedsFix(cwd, filename);
 
-  const store = new VerificationStore(auditDir(cwd));
   const stubId = fm["id"] || filename.replace(/\.md$/, "");
   store.updateStatus(stubId, "needs_fix", email, rationale);
-  store.close();
 
   return dest;
 }
@@ -85,38 +84,43 @@ export async function needsFix(cwd: string = process.cwd()): Promise<void> {
 
   const pending = await listByStatus(cwd, "pending");
 
-  if (allFlag) {
-    if (pending.length === 0) {
-      console.log("No pending findings to mark as needs-fix.");
+  const store = new VerificationStore(auditDir(cwd));
+  try {
+    if (allFlag) {
+      if (pending.length === 0) {
+        console.log("No pending findings to mark as needs-fix.");
+        return;
+      }
+
+      let count = 0;
+      for (const filename of pending) {
+        const dest = await markOneNeedsFix(cwd, filename, rationale, email, privateKey, store);
+        const id = filename.replace(/\.md$/, "");
+        console.log(`Needs fix: ${id}`);
+        console.log(`  Moved to: ${dest}`);
+        count++;
+      }
+      console.log(`\n${count} finding(s) marked as needs-fix.`);
+      console.log(`Run 'test-verifier check' after fixing to auto-resolve.`);
       return;
     }
 
-    let count = 0;
-    for (const filename of pending) {
-      const dest = await markOneNeedsFix(cwd, filename, rationale, email, privateKey);
-      const id = filename.replace(/\.md$/, "");
-      console.log(`Needs fix: ${id}`);
-      console.log(`  Moved to: ${dest}`);
-      count++;
+    const filename = pending.find(
+      (f) => f === `${findingId}.md` || f.replace(/\.md$/, "") === findingId,
+    );
+    if (!filename) {
+      console.error(`No pending finding with id '${findingId}'.`);
+      console.error(`Pending files: ${pending.length === 0 ? "(none)" : pending.join(", ")}`);
+      process.exit(1);
     }
-    console.log(`\n${count} finding(s) marked as needs-fix.`);
-    console.log(`Run 'test-verifier check' after fixing to auto-resolve.`);
-    return;
+
+    const dest = await markOneNeedsFix(cwd, filename, rationale, email, privateKey, store);
+
+    console.log(`Needs fix: ${findingId}`);
+    console.log(`  Moved to: ${dest}`);
+    console.log(`  This finding will be tracked until the issue is resolved.`);
+    console.log(`  Run 'test-verifier check' after fixing to auto-resolve.`);
+  } finally {
+    store.close();
   }
-
-  const filename = pending.find(
-    (f) => f === `${findingId}.md` || f.replace(/\.md$/, "") === findingId,
-  );
-  if (!filename) {
-    console.error(`No pending finding with id '${findingId}'.`);
-    console.error(`Pending files: ${pending.length === 0 ? "(none)" : pending.join(", ")}`);
-    process.exit(1);
-  }
-
-  const dest = await markOneNeedsFix(cwd, filename, rationale, email, privateKey);
-
-  console.log(`Needs fix: ${findingId}`);
-  console.log(`  Moved to: ${dest}`);
-  console.log(`  This finding will be tracked until the issue is resolved.`);
-  console.log(`  Run 'test-verifier check' after fixing to auto-resolve.`);
 }

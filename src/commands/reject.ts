@@ -76,9 +76,12 @@ export async function reject(cwd: string = process.cwd()): Promise<void> {
   const dest = await moveToRejected(cwd, filename);
 
   const store = new VerificationStore(auditDir(cwd));
-  const stubId = fm["id"] || findingId;
-  store.updateStatus(stubId, "rejected", email, rationale);
-  store.close();
+  try {
+    const stubId = fm["id"] || findingId;
+    store.updateStatus(stubId, "rejected", email, rationale);
+  } finally {
+    store.close();
+  }
 
   console.log(`Rejected: ${findingId}`);
   console.log(`  Moved to: ${dest}`);

@@ -62,8 +62,11 @@ export async function approve(cwd: string = process.cwd()): Promise<void> {
   const dest = await moveToApproved(cwd, filename);
 
   const store = new VerificationStore(auditDir(cwd));
-  store.updateStatus(findingId, "approved", email, rationale);
-  store.close();
+  try {
+    store.updateStatus(findingId, "approved", email, rationale);
+  } finally {
+    store.close();
+  }
 
   console.log(`Approved: ${findingId}`);
   console.log(`  Moved to: ${dest}`);

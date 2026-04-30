@@ -47,58 +47,59 @@ export interface ListOptions {
 export async function list(options: ListOptions = {}, cwd: string = process.cwd()): Promise<void> {
   const store = new VerificationStore(auditDir(cwd));
 
-  let statuses: StubStatus[];
-  if (options.status) {
-    statuses = [options.status];
-  } else if (options.all) {
-    statuses = ALL_STATUSES;
-  } else {
-    statuses = NOT_RESOLVED;
-  }
-
-  const records: VerificationRecord[] = [];
-  for (const s of statuses) {
-    records.push(...store.findByStatus(s));
-  }
-
-  records.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-
-  if (records.length === 0) {
-    const label = options.status
-      ? `No findings with status "${options.status}".`
-      : options.all
-        ? "No findings."
-        : "No unresolved findings.";
-    console.log(label);
-    store.close();
-    return;
-  }
-
-  const header = options.status
-    ? `Findings with status "${options.status}" (${records.length})`
-    : options.all
-      ? `All findings (${records.length})`
-      : `Unresolved findings (${records.length})`;
-  console.log(header);
-  console.log("─".repeat(header.length));
-  console.log();
-
-  for (const record of records) {
-    console.log(formatRecord(record));
-    console.log();
-  }
-
-  const summary = store.summary();
-  const parts: string[] = [];
-  for (const [status, count] of Object.entries(summary)) {
-    if (count > 0) {
-      const color = STATUS_COLORS[status] ?? "";
-      parts.push(`${color}${status}: ${count}${RESET}`);
+  try {
+    let statuses: StubStatus[];
+    if (options.status) {
+      statuses = [options.status];
+    } else if (options.all) {
+      statuses = ALL_STATUSES;
+    } else {
+      statuses = NOT_RESOLVED;
     }
-  }
-  if (parts.length > 0) {
-    console.log(`Summary: ${parts.join("  ")}`);
-  }
 
-  store.close();
+    const records: VerificationRecord[] = [];
+    for (const s of statuses) {
+      records.push(...store.findByStatus(s));
+    }
+
+    records.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+
+    if (records.length === 0) {
+      const label = options.status
+        ? `No findings with status "${options.status}".`
+        : options.all
+          ? "No findings."
+          : "No unresolved findings.";
+      console.log(label);
+      return;
+    }
+
+    const header = options.status
+      ? `Findings with status "${options.status}" (${records.length})`
+      : options.all
+        ? `All findings (${records.length})`
+        : `Unresolved findings (${records.length})`;
+    console.log(header);
+    console.log("─".repeat(header.length));
+    console.log();
+
+    for (const record of records) {
+      console.log(formatRecord(record));
+      console.log();
+    }
+
+    const summary = store.summary();
+    const parts: string[] = [];
+    for (const [status, count] of Object.entries(summary)) {
+      if (count > 0) {
+        const color = STATUS_COLORS[status] ?? "";
+        parts.push(`${color}${status}: ${count}${RESET}`);
+      }
+    }
+    if (parts.length > 0) {
+      console.log(`Summary: ${parts.join("  ")}`);
+    }
+  } finally {
+    store.close();
+  }
 }

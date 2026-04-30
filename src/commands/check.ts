@@ -25,6 +25,7 @@ import { generateStubMarkdown } from "../markdown-writer";
 import { extractTestBlocks } from "../test-block-extractor";
 import { VerificationStore, type VerificationRecord } from "../db/verification-store";
 import { maxSeverity } from "../rule-engine";
+import { resolveWithinBase, assertSafeRelativePath } from "../path-guard";
 
 export type CheckMode = "committed" | "staged" | "uncommitted";
 
@@ -33,6 +34,7 @@ async function getFileAtCommit(
   filePath: string,
   cwd: string,
 ): Promise<string> {
+  assertSafeRelativePath(filePath);
   const result = await $`git show ${sha}:${filePath}`
     .cwd(cwd)
     .quiet()
@@ -46,7 +48,8 @@ async function getFileFromWorkingTree(
   cwd: string,
 ): Promise<string> {
   try {
-    return await readFile(join(cwd, filePath), "utf-8");
+    const safePath = resolveWithinBase(cwd, filePath);
+    return await readFile(safePath, "utf-8");
   } catch {
     return "";
   }
@@ -152,6 +155,7 @@ export async function check(
   let autoApprovedCount = 0;
   let resolvedCount = 0;
 
+  try {
   for (const fileDiff of fileDiffs) {
     const testFilePath = fileDiff.newPath;
 
@@ -282,8 +286,9 @@ export async function check(
     const label = isAutoApproved ? " (auto-approved)" : lineageLabel;
     console.log(`  ${ruleResult.overallSeverity} ${testFilePath}${label}`);
   }
-
-  store.close();
+  } finally {
+    store.close();
+  }
 
   if (mode === "committed") {
     await writeHead(cwd, toLabel);

@@ -43,53 +43,54 @@ export async function history(cwd: string = process.cwd()): Promise<void> {
 
   const store = new VerificationStore(auditDir(cwd));
 
-  let records: VerificationRecord[];
-  if (testFunction) {
-    records = store.findByTestFileAndFunction(testFile, testFunction);
-  } else {
-    records = store.findByTestFile(testFile);
-  }
+  try {
+    let records: VerificationRecord[];
+    if (testFunction) {
+      records = store.findByTestFileAndFunction(testFile, testFunction);
+    } else {
+      records = store.findByTestFile(testFile);
+    }
 
-  if (records.length === 0) {
-    const label = testFunction
-      ? `${testFile} > "${testFunction}"`
-      : testFile;
-    console.log(`No verification history for ${label}.`);
-    store.close();
-    return;
-  }
+    if (records.length === 0) {
+      const label = testFunction
+        ? `${testFile} > "${testFunction}"`
+        : testFile;
+      console.log(`No verification history for ${label}.`);
+      return;
+    }
 
-  const header = testFunction
-    ? `Verification history for ${testFile} > "${testFunction}"`
-    : `Verification history for ${testFile}`;
-  console.log(header);
-  console.log("─".repeat(header.length));
-  console.log();
+    const header = testFunction
+      ? `Verification history for ${testFile} > "${testFunction}"`
+      : `Verification history for ${testFile}`;
+    console.log(header);
+    console.log("─".repeat(header.length));
+    console.log();
 
-  for (const record of records) {
-    console.log(formatRecord(record));
+    for (const record of records) {
+      console.log(formatRecord(record));
 
-    const children = store.getChildren(record.id);
-    for (const child of children) {
-      if (!records.some((r) => r.id === child.id)) {
-        console.log(formatRecord(child, "  └─ "));
+      const children = store.getChildren(record.id);
+      for (const child of children) {
+        if (!records.some((r) => r.id === child.id)) {
+          console.log(formatRecord(child, "  └─ "));
+        }
+      }
+
+      console.log();
+    }
+
+    const summary = store.summary();
+    const parts: string[] = [];
+    for (const [status, count] of Object.entries(summary)) {
+      if (count > 0) {
+        const color = STATUS_COLORS[status] ?? "";
+        parts.push(`${color}${status}: ${count}${RESET}`);
       }
     }
-
-    console.log();
-  }
-
-  const summary = store.summary();
-  const parts: string[] = [];
-  for (const [status, count] of Object.entries(summary)) {
-    if (count > 0) {
-      const color = STATUS_COLORS[status] ?? "";
-      parts.push(`${color}${status}: ${count}${RESET}`);
+    if (parts.length > 0) {
+      console.log(`Overall: ${parts.join("  ")}`);
     }
+  } finally {
+    store.close();
   }
-  if (parts.length > 0) {
-    console.log(`Overall: ${parts.join("  ")}`);
-  }
-
-  store.close();
 }
