@@ -1,0 +1,156 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`buildSystemPrompt snapshot 1`] = `
+"You are a test change analyst for a code review system. Your job is to determine whether a test file change weakens the test suite.
+
+A test change "weakens" the suite when it makes tests less effective at catching real bugs. Common patterns:
+- Replacing a strict matcher with a looser one (e.g. toBe → toBeDefined)
+- Removing assertions without replacing them
+- Changing expected values to match buggy output instead of fixing the bug
+- Adding .skip or .todo to disable passing tests
+- Introducing tautological assertions (expect(true).toBe(true))
+
+A test change is legitimate when it:
+- Updates expected values to match intentional production behavior changes
+- Refactors test structure without reducing coverage
+- Adds new assertions or test cases
+- Removes tests for deleted production code
+
+You will receive:
+1. The test file path
+2. The unified diff of the test file change
+3. Rule engine findings (automated static analysis results with severity levels)
+4. Related production file diffs from the same commit (if any)
+
+Use the production diffs to determine whether a test change is tracking a legitimate production change or masking a bug.
+
+Respond with a single JSON object. No markdown fences, no commentary outside the JSON.
+
+Required JSON schema:
+{
+  "summary": "<string: one-sentence description of what changed and why it matters>",
+  "risk_assessment": "<string: one of SAFE, LOW, SUSPICIOUS, CRITICAL>",
+  "concerns": ["<string: specific concern>", "..."],
+  "recommendation": "<string: actionable next step for the human reviewer>"
+}
+
+Risk assessment guidelines:
+- SAFE: test change clearly tracks a legitimate production change, or adds coverage
+- LOW: minor change that is unlikely to weaken the suite but warrants a glance
+- SUSPICIOUS: change pattern matches known weakening techniques; reviewer should inspect carefully
+- CRITICAL: strong evidence the test was weakened to hide a bug; block until reviewed"
+`;
+
+exports[`buildUserPrompt full input with findings and prod diffs 1`] = `
+"## Test File
+\`src/auth/validate.test.ts\`
+
+## Test Diff
+\`\`\`diff
+--- a/src/auth/validate.test.ts
++++ b/src/auth/validate.test.ts
+@@ -10,7 +10,7 @@
+ test('rejects expired tokens', () => {
+   const result = validate(expiredToken);
+-  expect(result).toBe(false);
++  expect(result).toBeDefined();
+ });
+\`\`\`
+
+## Rule Engine Findings
+- **[CRITICAL]** \`matcher-transition\` (line 12): toBe → toBeDefined: strict equality replaced with existence check
+
+## Related Production Code Changes
+\`\`\`diff
+--- a/src/auth/validate.ts
++++ b/src/auth/validate.ts
+@@ -5,7 +5,7 @@
+ export function validate(token: string): boolean {
+-  return checkExpiry(token);
++  return true;
+ }
+\`\`\`"
+`;
+
+exports[`buildUserPrompt multiple findings, no prod diffs 1`] = `
+"## Test File
+\`src/tax/calculate.test.ts\`
+
+## Test Diff
+\`\`\`diff
+--- a/src/tax/calculate.test.ts
++++ b/src/tax/calculate.test.ts
+@@ -3,8 +3,6 @@
+ describe('tax calculation', () => {
+-  test('applies standard rate', () => {
+-    expect(calculateTax(100)).toBe(19);
+-  });
++  test.skip('applies standard rate', () => {
++    expect(calculateTax(100)).toBe(19);
++  });
+   test('zero for exempt items', () => {
+-    expect(calculateTax(0)).toBe(0);
++    expect(calculateTax(0)).toBeDefined();
+   });
+\`\`\`
+
+## Rule Engine Findings
+- **[CRITICAL]** \`skip-detector\` (line 4): test 'applies standard rate' changed from active to skipped
+- **[SUSPICIOUS]** \`matcher-transition\` (line 9): toBe → toBeDefined: strict equality replaced with existence check
+
+## Related Production Code Changes
+No production files were modified in the same commit."
+`;
+
+exports[`buildUserPrompt no findings, with prod diffs 1`] = `
+"## Test File
+\`src/utils/format.test.ts\`
+
+## Test Diff
+\`\`\`diff
+--- a/src/utils/format.test.ts
++++ b/src/utils/format.test.ts
+@@ -1,5 +1,5 @@
+ test('formats currency', () => {
+-  expect(format(1000)).toBe('$1,000.00');
++  expect(format(1000)).toBe('€1.000,00');
+ });
+\`\`\`
+
+## Rule Engine Findings
+No findings from static analysis.
+
+## Related Production Code Changes
+\`\`\`diff
+--- a/src/utils/format.ts
++++ b/src/utils/format.ts
+@@ -1,3 +1,3 @@
+-const locale = 'en-US';
++const locale = 'de-DE';
+ export function format(n: number) {
+\`\`\`"
+`;
+
+exports[`buildUserPrompt no findings, no prod diffs 1`] = `
+"## Test File
+\`src/components/Button.test.ts\`
+
+## Test Diff
+\`\`\`diff
+--- a/src/components/Button.test.ts
++++ b/src/components/Button.test.ts
+@@ -5,3 +5,7 @@
+ test('renders label', () => {
+   expect(render(<Button />).text).toBe('Click');
+ });
++test('renders disabled state', () => {
++  expect(render(<Button disabled />).getAttribute('disabled')).toBe('');
++});
+\`\`\`
+
+## Rule Engine Findings
+No findings from static analysis.
+
+## Related Production Code Changes
+No production files were modified in the same commit."
+`;
