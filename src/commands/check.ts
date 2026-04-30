@@ -1,4 +1,4 @@
-import { writeFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { $ } from "bun";
 import { loadConfig } from "../config";
@@ -6,6 +6,9 @@ import {
   getCurrentCommitSha,
   getDiffBetweenCommits,
   getRelatedProdFiles,
+  getStagedDiff,
+  getUncommittedDiff,
+  getFileFromIndex,
 } from "../git";
 import {
   readHead,
@@ -18,6 +21,8 @@ import { parseDiff } from "../diff-parser";
 import { runRuleEngine } from "../rule-engine";
 import { generateStubMarkdown } from "../markdown-writer";
 
+export type CheckMode = "committed" | "staged" | "uncommitted";
+
 async function getFileAtCommit(
   sha: string,
   filePath: string,
@@ -29,6 +34,17 @@ async function getFileAtCommit(
     .nothrow();
   if (result.exitCode !== 0) return "";
   return result.stdout.toString();
+}
+
+async function getFileFromWorkingTree(
+  filePath: string,
+  cwd: string,
+): Promise<string> {
+  try {
+    return await readFile(join(cwd, filePath), "utf-8");
+  } catch {
+    return "";
+  }
 }
 
 function splitRawDiffByFile(rawDiff: string): Map<string, string> {
@@ -55,33 +71,54 @@ function splitRawDiffByFile(rawDiff: string): Map<string, string> {
   return result;
 }
 
-export async function check(cwd: string = process.cwd()): Promise<void> {
+export async function check(
+  cwd: string = process.cwd(),
+  mode: CheckMode = "committed",
+): Promise<void> {
   const config = await loadConfig(cwd);
   await ensureAuditDir(cwd);
-
-  const fromSha = await readHead(cwd);
-  if (!fromSha) {
-    console.error(
-      "test-verifier: HEAD not initialized. Run `bunx test-verifier init` first.",
-    );
-    process.exit(1);
-  }
-
-  const toSha = await getCurrentCommitSha(cwd);
-  if (fromSha === toSha) {
-    console.log("test-verifier: no new commits to check.");
-    return;
-  }
 
   const diffGlobs = [
     ...config.testGlobs,
     ...config.excludeGlobs.map((g) => `:!${g}`),
   ];
-  const rawDiff = await getDiffBetweenCommits(fromSha, toSha, diffGlobs, cwd);
+
+  let fromSha: string;
+  let toLabel: string;
+  let rawDiff: string;
+
+  if (mode === "committed") {
+    const storedHead = await readHead(cwd);
+    if (!storedHead) {
+      console.error(
+        "test-verifier: HEAD not initialized. Run `bunx test-verifier init` first.",
+      );
+      process.exit(1);
+    }
+
+    const toSha = await getCurrentCommitSha(cwd);
+    if (storedHead === toSha) {
+      console.log("test-verifier: no new commits to check.");
+      return;
+    }
+
+    fromSha = storedHead;
+    toLabel = toSha;
+    rawDiff = await getDiffBetweenCommits(fromSha, toSha, diffGlobs, cwd);
+  } else {
+    fromSha = await getCurrentCommitSha(cwd);
+    toLabel = mode === "staged" ? "STAGED" : "UNCOMMITTED";
+    rawDiff =
+      mode === "staged"
+        ? await getStagedDiff(diffGlobs, cwd)
+        : await getUncommittedDiff(diffGlobs, cwd);
+  }
 
   if (!rawDiff) {
     console.log("test-verifier: no test file changes detected.");
-    await writeHead(cwd, toSha);
+    if (mode === "committed") {
+      await writeHead(cwd, toLabel);
+    }
     return;
   }
 
@@ -95,7 +132,14 @@ export async function check(cwd: string = process.cwd()): Promise<void> {
     const testFilePath = fileDiff.newPath;
 
     const beforeContent = await getFileAtCommit(fromSha, fileDiff.oldPath, cwd);
-    const afterContent = await getFileAtCommit(toSha, testFilePath, cwd);
+    let afterContent: string;
+    if (mode === "committed") {
+      afterContent = await getFileAtCommit(toLabel, testFilePath, cwd);
+    } else if (mode === "staged") {
+      afterContent = await getFileFromIndex(testFilePath, cwd);
+    } else {
+      afterContent = await getFileFromWorkingTree(testFilePath, cwd);
+    }
 
     const ruleResult = runRuleEngine({
       filePath: testFilePath,
@@ -105,12 +149,15 @@ export async function check(cwd: string = process.cwd()): Promise<void> {
       config,
     });
 
-    const prodFiles = await getRelatedProdFiles(toSha, testFilePath, cwd);
+    const prodFiles =
+      mode === "committed"
+        ? await getRelatedProdFiles(toLabel, testFilePath, cwd)
+        : [];
     const fileRawDiff = rawDiffByFile.get(testFilePath) ?? "";
 
     const { filename, content } = generateStubMarkdown({
       ruleResult,
-      commit: toSha,
+      commit: toLabel,
       parentCommit: fromSha,
       rawDiff: fileRawDiff,
       prodFilesRelated: prodFiles,
@@ -132,7 +179,9 @@ export async function check(cwd: string = process.cwd()): Promise<void> {
     console.log(`  ${ruleResult.overallSeverity} ${testFilePath}${label}`);
   }
 
-  await writeHead(cwd, toSha);
+  if (mode === "committed") {
+    await writeHead(cwd, toLabel);
+  }
   console.log(
     `test-verifier: ${stubCount} file(s) analyzed, ${autoApprovedCount} auto-approved.`,
   );

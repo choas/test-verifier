@@ -68,6 +68,38 @@ export async function getDiffBetweenCommits(
   return result.stdout.toString().trim();
 }
 
+export async function getStagedDiff(
+  globs: string[],
+  cwd?: string,
+): Promise<string> {
+  const dir = cwd ?? ".";
+  const args = globs.length > 0 ? ["--", ...globs] : [];
+  const result = await $`git diff --cached HEAD ${args}`.cwd(dir).quiet().nothrow();
+  if (result.exitCode !== 0) return "";
+  return result.stdout.toString().trim();
+}
+
+export async function getUncommittedDiff(
+  globs: string[],
+  cwd?: string,
+): Promise<string> {
+  const dir = cwd ?? ".";
+  const args = globs.length > 0 ? ["--", ...globs] : [];
+  const result = await $`git diff HEAD ${args}`.cwd(dir).quiet().nothrow();
+  if (result.exitCode !== 0) return "";
+  return result.stdout.toString().trim();
+}
+
+export async function getFileFromIndex(
+  filePath: string,
+  cwd?: string,
+): Promise<string> {
+  const dir = cwd ?? ".";
+  const result = await $`git show :${filePath}`.cwd(dir).quiet().nothrow();
+  if (result.exitCode !== 0) return "";
+  return result.stdout.toString();
+}
+
 function isTestFile(filePath: string): boolean {
   const p = filePath.replace(/\\/g, "/");
   if (/\.(test|spec)\.[tj]sx?$/.test(p)) return true;
