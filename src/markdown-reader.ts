@@ -15,7 +15,7 @@ export interface ParsedMarkdown {
 }
 
 const VALID_SEVERITIES = new Set(Object.values(Severity));
-const VALID_STATUSES = new Set<string>(["pending", "approved", "rejected"]);
+const VALID_STATUSES = new Set<string>(["pending", "approved", "rejected", "needs_fix", "resolved"]);
 
 export function parseMarkdown(raw: string): ParsedMarkdown {
   const { data, content } = matter(raw);
@@ -60,6 +60,16 @@ function parseFrontMatter(data: Record<string, unknown>): StubFile {
     prodFilesRelated = [String(prodFiles)];
   }
 
+  const testFuncs = data.test_functions;
+  let testFunctions: string[];
+  if (Array.isArray(testFuncs)) {
+    testFunctions = testFuncs.map(String);
+  } else if (testFuncs == null || testFuncs === "") {
+    testFunctions = [];
+  } else {
+    testFunctions = [String(testFuncs)];
+  }
+
   return {
     id: String(data.id ?? ""),
     created_at: stringifyDate(data.created_at),
@@ -67,10 +77,12 @@ function parseFrontMatter(data: Record<string, unknown>): StubFile {
     status: status as StubStatus,
     llm_enriched: Boolean(data.llm_enriched),
     test_file: String(data.test_file ?? ""),
+    test_functions: testFunctions,
     prod_files_related: prodFilesRelated,
     commit: String(data.commit ?? ""),
     parent_commit: String(data.parent_commit ?? ""),
     diff_hash: String(data.diff_hash ?? ""),
+    parent_verification_id: data.parent_verification_id ? String(data.parent_verification_id) : undefined,
   };
 }
 

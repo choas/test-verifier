@@ -14,7 +14,7 @@ export interface Finding {
   after: string;
 }
 
-export type StubStatus = "pending" | "approved" | "rejected";
+export type StubStatus = "pending" | "approved" | "rejected" | "needs_fix" | "resolved";
 
 export interface StubFile {
   id: string;
@@ -23,10 +23,12 @@ export interface StubFile {
   status: StubStatus;
   llm_enriched: boolean;
   test_file: string;
+  test_functions: string[];
   prod_files_related: string[];
   commit: string;
   parent_commit: string;
   diff_hash: string;
+  parent_verification_id?: string;
 }
 
 export interface AnalysisResult {

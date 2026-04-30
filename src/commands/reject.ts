@@ -1,10 +1,11 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { $ } from "bun";
-import { statusDir, moveToRejected, listByStatus } from "../audit-folder";
+import { statusDir, moveToRejected, listByStatus, auditDir } from "../audit-folder";
 import { getOriginUrl, getRepoId, loadPrivateKey } from "../crypto/keys";
 import { sign } from "../crypto/sign-verify";
 import { parseFrontMatter } from "../crypto/sign-verify";
+import { VerificationStore } from "../db/verification-store";
 
 async function getGitEmail(cwd: string): Promise<string> {
   const result = await $`git config user.email`.cwd(cwd).quiet().nothrow();
@@ -73,6 +74,11 @@ export async function reject(cwd: string = process.cwd()): Promise<void> {
 
   await writeFile(filePath, updated);
   const dest = await moveToRejected(cwd, filename);
+
+  const store = new VerificationStore(auditDir(cwd));
+  const stubId = fm["id"] || findingId;
+  store.updateStatus(stubId, "rejected", email, rationale);
+  store.close();
 
   console.log(`Rejected: ${findingId}`);
   console.log(`  Moved to: ${dest}`);

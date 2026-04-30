@@ -14,12 +14,17 @@ import {
   readHead,
   writeHead,
   ensureAuditDir,
+  auditDir,
   statusDir,
   moveToApproved,
+  moveToResolved,
 } from "../audit-folder";
 import { parseDiff } from "../diff-parser";
 import { runRuleEngine } from "../rule-engine";
 import { generateStubMarkdown } from "../markdown-writer";
+import { extractTestBlocks } from "../test-block-extractor";
+import { VerificationStore, type VerificationRecord } from "../db/verification-store";
+import { maxSeverity } from "../rule-engine";
 
 export type CheckMode = "committed" | "staged" | "uncommitted";
 
@@ -69,6 +74,21 @@ function splitRawDiffByFile(rawDiff: string): Map<string, string> {
   }
 
   return result;
+}
+
+import type { TestBlock } from "../test-block-extractor";
+
+function collectTestFunctionNames(blocks: TestBlock[]): string[] {
+  const names: string[] = [];
+  for (const block of blocks) {
+    if (block.type === "it" || block.type === "test") {
+      names.push(block.name);
+    }
+    if (block.children.length > 0) {
+      names.push(...collectTestFunctionNames(block.children));
+    }
+  }
+  return names;
 }
 
 export async function check(
@@ -125,8 +145,11 @@ export async function check(
   const fileDiffs = parseDiff(rawDiff);
   const rawDiffByFile = splitRawDiffByFile(rawDiff);
 
+  const store = new VerificationStore(auditDir(cwd));
+
   let stubCount = 0;
   let autoApprovedCount = 0;
+  let resolvedCount = 0;
 
   for (const fileDiff of fileDiffs) {
     const testFilePath = fileDiff.newPath;
@@ -149,40 +172,123 @@ export async function check(
       config,
     });
 
+    const afterBlocks = extractTestBlocks(afterContent, testFilePath);
+    const testFunctions = collectTestFunctionNames(afterBlocks);
+
+    const needsFixRecords = store.findNeedsFixForTestFile(testFilePath);
+    let parentVerificationId: string | undefined;
+    const resolvedIds: string[] = [];
+
+    if (needsFixRecords.length > 0) {
+      for (const nf of needsFixRecords) {
+        const overlappingFunctions = nf.testFunctions.filter((fn) =>
+          testFunctions.includes(fn),
+        );
+
+        if (overlappingFunctions.length > 0 || nf.testFunctions.length === 0) {
+          const originalRules = new Set(
+            nf.rule.split(",").map((r) => r.trim()),
+          );
+          const currentRules = new Set(
+            ruleResult.findings.map((f) => f.rule),
+          );
+
+          const stillTriggered = [...originalRules].some((r) =>
+            currentRules.has(r),
+          );
+
+          if (!stillTriggered) {
+            resolvedIds.push(nf.id);
+          } else {
+            parentVerificationId = nf.id;
+          }
+        }
+      }
+    }
+
+    for (const resolvedId of resolvedIds) {
+      store.updateStatus(resolvedId, "resolved");
+      const resolvedRecord = store.getById(resolvedId);
+      if (resolvedRecord) {
+        const nfFilename = `${resolvedId.replace(/^tv_/, "")}.md`;
+        try {
+          await moveToResolved(cwd, nfFilename, "needs_fix");
+        } catch {
+          // file may not exist if only tracked in DB
+        }
+        console.log(`  RESOLVED ${testFilePath} (fixes ${resolvedId})`);
+        resolvedCount++;
+      }
+    }
+
     const prodFiles =
       mode === "committed"
         ? await getRelatedProdFiles(toLabel, testFilePath, cwd)
         : [];
     const fileRawDiff = rawDiffByFile.get(testFilePath) ?? "";
 
-    const { filename, content } = generateStubMarkdown({
+    const { filename, content, stub } = generateStubMarkdown({
       ruleResult,
       commit: toLabel,
       parentCommit: fromSha,
       rawDiff: fileRawDiff,
       prodFilesRelated: prodFiles,
+      testFunctions,
+      parentVerificationId,
     });
 
     const pendingPath = join(statusDir(cwd, "pending"), filename);
     await writeFile(pendingPath, content);
     stubCount++;
 
+    const primaryRule = ruleResult.findings.length > 0
+      ? ruleResult.findings.map((f) => f.rule).join(",")
+      : "safe";
+
+    const now = new Date().toISOString();
+    const record: VerificationRecord = {
+      id: stub.id,
+      testFile: testFilePath,
+      testFunctions,
+      rule: primaryRule,
+      severity: ruleResult.overallSeverity,
+      status: "pending",
+      commit: toLabel,
+      parentCommit: fromSha,
+      diffHash: stub.diff_hash,
+      createdAt: now,
+      updatedAt: now,
+      reviewer: null,
+      rationale: null,
+      parentVerificationId: parentVerificationId ?? null,
+    };
+    store.insert(record);
+
     const isAutoApproved = (config.policy.autoApprove as string[]).includes(
       ruleResult.overallSeverity,
     );
     if (isAutoApproved) {
       await moveToApproved(cwd, filename);
+      store.updateStatus(stub.id, "approved");
       autoApprovedCount++;
     }
 
-    const label = isAutoApproved ? " (auto-approved)" : "";
+    const lineageLabel = parentVerificationId
+      ? ` (linked to ${parentVerificationId})`
+      : "";
+    const label = isAutoApproved ? " (auto-approved)" : lineageLabel;
     console.log(`  ${ruleResult.overallSeverity} ${testFilePath}${label}`);
   }
+
+  store.close();
 
   if (mode === "committed") {
     await writeHead(cwd, toLabel);
   }
-  console.log(
-    `test-verifier: ${stubCount} file(s) analyzed, ${autoApprovedCount} auto-approved.`,
-  );
+
+  const parts = [`${stubCount} file(s) analyzed`, `${autoApprovedCount} auto-approved`];
+  if (resolvedCount > 0) {
+    parts.push(`${resolvedCount} needs_fix resolved`);
+  }
+  console.log(`test-verifier: ${parts.join(", ")}.`);
 }

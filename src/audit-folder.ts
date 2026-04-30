@@ -4,7 +4,7 @@ import type { StubStatus } from "./types";
 
 const AUDIT_DIR = ".test-verifier";
 const HEAD_FILE = "HEAD";
-const STATUS_DIRS: readonly StubStatus[] = ["pending", "approved", "rejected"] as const;
+const STATUS_DIRS: readonly StubStatus[] = ["pending", "approved", "rejected", "needs_fix", "resolved"] as const;
 const EXTRA_DIRS = ["archive", "keys"] as const;
 
 export function auditDir(repoRoot: string): string {
@@ -51,6 +51,14 @@ export async function moveToApproved(repoRoot: string, filename: string): Promis
 
 export async function moveToRejected(repoRoot: string, filename: string): Promise<string> {
   return moveFile(repoRoot, filename, "pending", "rejected");
+}
+
+export async function moveToNeedsFix(repoRoot: string, filename: string): Promise<string> {
+  return moveFile(repoRoot, filename, "pending", "needs_fix");
+}
+
+export async function moveToResolved(repoRoot: string, filename: string, from: StubStatus = "needs_fix"): Promise<string> {
+  return moveFile(repoRoot, filename, from, "resolved");
 }
 
 async function moveFile(

@@ -8,6 +8,8 @@ export interface MarkdownWriterInput {
   parentCommit: string;
   rawDiff: string;
   prodFilesRelated?: string[];
+  testFunctions?: string[];
+  parentVerificationId?: string;
   createdAt?: Date;
 }
 
@@ -24,6 +26,8 @@ export function generateStubMarkdown(input: MarkdownWriterInput): MarkdownWriter
     parentCommit,
     rawDiff,
     prodFilesRelated = [],
+    testFunctions = [],
+    parentVerificationId,
     createdAt = new Date(),
   } = input;
 
@@ -41,10 +45,12 @@ export function generateStubMarkdown(input: MarkdownWriterInput): MarkdownWriter
     status: "pending",
     llm_enriched: false,
     test_file: ruleResult.filePath,
+    test_functions: testFunctions,
     prod_files_related: prodFilesRelated,
     commit,
     parent_commit: parentCommit,
     diff_hash: diffHash,
+    parent_verification_id: parentVerificationId,
   };
 
   const content = renderMarkdown(stub, ruleResult.findings, rawDiff);
@@ -91,6 +97,17 @@ function renderMarkdown(stub: StubFile, findings: Finding[], rawDiff: string): s
   lines.push(`status: ${stub.status}`);
   lines.push(`llm_enriched: ${stub.llm_enriched}`);
   lines.push(`test_file: ${stub.test_file}`);
+  if (stub.test_functions.length > 0) {
+    lines.push("test_functions:");
+    for (const f of stub.test_functions) {
+      lines.push(`  - ${f}`);
+    }
+  } else {
+    lines.push("test_functions: []");
+  }
+  if (stub.parent_verification_id) {
+    lines.push(`parent_verification_id: ${stub.parent_verification_id}`);
+  }
   if (stub.prod_files_related.length > 0) {
     lines.push("prod_files_related:");
     for (const f of stub.prod_files_related) {

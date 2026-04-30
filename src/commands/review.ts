@@ -5,11 +5,14 @@ import { $ } from "bun";
 import {
   listByStatus,
   statusDir,
+  auditDir,
   moveToApproved,
   moveToRejected,
+  moveToNeedsFix,
 } from "../audit-folder";
 import { parseMarkdown, type ParsedMarkdown } from "../markdown-reader";
 import type { Severity } from "../types";
+import { VerificationStore } from "../db/verification-store";
 
 const RESET = "\x1b[0m";
 const BOLD = "\x1b[1m";
@@ -47,7 +50,7 @@ async function getGitEmail(cwd: string): Promise<string> {
 
 function updateMarkdownStatus(
   raw: string,
-  status: "approved" | "rejected",
+  status: "approved" | "rejected" | "needs_fix",
   approver: string,
 ): string {
   let updated = raw.replace(/^status:\s*.+$/m, `status: ${status}`);
@@ -152,11 +155,16 @@ export async function review(cwd: string = process.cwd()): Promise<void> {
     `\n${enriched.length} file(s) ready for review.\n`,
   );
 
+  const MAGENTA = "\x1b[35m";
+  const BG_MAGENTA = "\x1b[45m";
+
   const rl = createInterface({ input: process.stdin, output: process.stdout });
   const email = await getGitEmail(cwd);
+  const store = new VerificationStore(auditDir(cwd));
 
   let approvedCount = 0;
   let rejectedCount = 0;
+  let needsFixCount = 0;
   let skippedCount = 0;
 
   try {
@@ -165,10 +173,25 @@ export async function review(cwd: string = process.cwd()): Promise<void> {
 
       displayFile(i, enriched.length, file);
 
+      const prev = store.findByTestFile(file.parsed.stub.test_file);
+      if (prev.length > 0) {
+        const relevantPrev = prev.filter((r) => r.id !== file.parsed.stub.id);
+        if (relevantPrev.length > 0) {
+          console.log(`\n${DIM}Previous verifications:${RESET}`);
+          for (const p of relevantPrev.slice(0, 3)) {
+            const statusColor = p.status === "needs_fix" ? MAGENTA : p.status === "approved" ? GREEN : RED;
+            console.log(`  ${statusColor}[${p.status}]${RESET} ${p.id} (${p.rule})`);
+          }
+          if (relevantPrev.length > 3) {
+            console.log(`  ${DIM}... and ${relevantPrev.length - 3} more${RESET}`);
+          }
+        }
+      }
+
       let answer = "";
-      while (!["a", "r", "s"].includes(answer)) {
+      while (!["a", "r", "f", "s"].includes(answer)) {
         const input = await rl.question(
-          `\n${BOLD}[a]${RESET}pprove / ${BOLD}[r]${RESET}eject / ${BOLD}[s]${RESET}kip ? `,
+          `\n${BOLD}[a]${RESET}pprove / ${BOLD}[r]${RESET}eject / ${BOLD}[f]${RESET} needs-fix / ${BOLD}[s]${RESET}kip ? `,
         );
         answer = input.trim().toLowerCase().charAt(0);
       }
@@ -178,6 +201,7 @@ export async function review(cwd: string = process.cwd()): Promise<void> {
           const updated = updateMarkdownStatus(file.raw, "approved", email);
           await writeFile(file.filePath, updated);
           await moveToApproved(cwd, file.filename);
+          store.updateStatus(file.parsed.stub.id, "approved", email);
           approvedCount++;
           console.log(`  ${BG_GREEN}${BOLD} APPROVED ${RESET}`);
           break;
@@ -186,8 +210,18 @@ export async function review(cwd: string = process.cwd()): Promise<void> {
           const updated = updateMarkdownStatus(file.raw, "rejected", email);
           await writeFile(file.filePath, updated);
           await moveToRejected(cwd, file.filename);
+          store.updateStatus(file.parsed.stub.id, "rejected", email);
           rejectedCount++;
           console.log(`  ${BG_RED}${BOLD} REJECTED ${RESET}`);
+          break;
+        }
+        case "f": {
+          const updated = updateMarkdownStatus(file.raw, "needs_fix", email);
+          await writeFile(file.filePath, updated);
+          await moveToNeedsFix(cwd, file.filename);
+          store.updateStatus(file.parsed.stub.id, "needs_fix", email);
+          needsFixCount++;
+          console.log(`  ${BG_MAGENTA}${BOLD} NEEDS FIX ${RESET}`);
           break;
         }
         case "s": {
@@ -199,9 +233,11 @@ export async function review(cwd: string = process.cwd()): Promise<void> {
     }
   } finally {
     rl.close();
+    store.close();
   }
 
-  console.log(
-    `\ntest-verifier: ${approvedCount} approved, ${rejectedCount} rejected, ${skippedCount} skipped.`,
-  );
+  const parts = [`${approvedCount} approved`, `${rejectedCount} rejected`];
+  if (needsFixCount > 0) parts.push(`${needsFixCount} needs-fix`);
+  parts.push(`${skippedCount} skipped`);
+  console.log(`\ntest-verifier: ${parts.join(", ")}.`);
 }

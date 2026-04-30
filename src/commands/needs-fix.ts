@@ -1,9 +1,10 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { $ } from "bun";
-import { statusDir, moveToApproved, listByStatus, auditDir } from "../audit-folder";
+import { statusDir, moveToNeedsFix, listByStatus, auditDir } from "../audit-folder";
 import { getOriginUrl, getRepoId, loadPrivateKey } from "../crypto/keys";
-import { signFile } from "../crypto/sign-verify";
+import { sign } from "../crypto/sign-verify";
+import { parseFrontMatter } from "../crypto/sign-verify";
 import { VerificationStore } from "../db/verification-store";
 
 async function getGitEmail(cwd: string): Promise<string> {
@@ -17,10 +18,10 @@ async function getGitEmail(cwd: string): Promise<string> {
   return email;
 }
 
-export async function approve(cwd: string = process.cwd()): Promise<void> {
+export async function needsFix(cwd: string = process.cwd()): Promise<void> {
   const findingId = Bun.argv[3];
   if (!findingId) {
-    console.error("Usage: test-verifier approve <finding-id> --rationale <text>");
+    console.error("Usage: test-verifier needs-fix <finding-id> --rationale <text>");
     process.exit(1);
   }
 
@@ -55,16 +56,32 @@ export async function approve(cwd: string = process.cwd()): Promise<void> {
     process.exit(1);
   }
 
-  const signed = signFile(privateKey, content, email, rationale);
-  const updated = signed.replace(/^status: pending$/m, "status: approved");
+  const fm = parseFrontMatter(content);
+  const diffHash = fm["diff_hash"];
+  if (!diffHash) throw new Error("No diff_hash in front matter");
+
+  const decisionText = `needs_fix by ${email}\nrationale: ${rationale}`;
+  const sig = sign(privateKey, { diffHash, decisionText });
+
+  const marker = "## Decision";
+  const idx = content.indexOf(marker);
+  if (idx === -1) throw new Error("No Decision section found");
+
+  const before = content.slice(0, idx + marker.length);
+  const decision = `\n\n${decisionText}\nsignature: ed25519:${sig}\n`;
+  const signed = before + decision;
+  const updated = signed.replace(/^status: pending$/m, "status: needs_fix");
 
   await writeFile(filePath, updated);
-  const dest = await moveToApproved(cwd, filename);
+  const dest = await moveToNeedsFix(cwd, filename);
 
   const store = new VerificationStore(auditDir(cwd));
-  store.updateStatus(findingId, "approved", email, rationale);
+  const stubId = fm["id"] || findingId;
+  store.updateStatus(stubId, "needs_fix", email, rationale);
   store.close();
 
-  console.log(`Approved: ${findingId}`);
+  console.log(`Needs fix: ${findingId}`);
   console.log(`  Moved to: ${dest}`);
+  console.log(`  This finding will be tracked until the issue is resolved.`);
+  console.log(`  Run 'test-verifier check' after fixing to auto-resolve.`);
 }

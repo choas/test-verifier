@@ -11,7 +11,7 @@ interface AuditVerifyOptions {
   signatures: boolean;
 }
 
-const APPROVER_RE = /^(?:approved|rejected) by (.+)$/m;
+const APPROVER_RE = /^(?:approved|rejected|needs_fix) by (.+)$/m;
 
 function extractApprover(fileContent: string): string | null {
   const decision = parseDecisionSection(fileContent);
@@ -50,6 +50,17 @@ export async function auditVerify(options: AuditVerifyOptions): Promise<void> {
         console.error(`  ${f}`);
       }
       failures += rejected.length;
+    }
+  }
+
+  if (options.noPending) {
+    const needsFix = await listByStatus(repoRoot, "needs_fix");
+    if (needsFix.length > 0) {
+      console.error(`FAIL: ${needsFix.length} needs_fix file(s) exist`);
+      for (const f of needsFix) {
+        console.error(`  ${f}`);
+      }
+      failures += needsFix.length;
     }
   }
 
