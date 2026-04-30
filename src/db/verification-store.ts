@@ -36,6 +36,10 @@ export interface VerificationRecord {
   parentVerificationId: string | null;
 }
 
+function escapeLike(value: string): string {
+  return value.replace(/[\\%_]/g, (ch) => `\\${ch}`);
+}
+
 export class VerificationStore {
   private db: Database;
 
@@ -142,10 +146,10 @@ export class VerificationStore {
     const rows = this.db
       .query(
         `SELECT * FROM verifications
-         WHERE test_file = ? AND test_functions LIKE ?
+         WHERE test_file = ? AND test_functions LIKE ? ESCAPE '\\'
          ORDER BY created_at DESC`,
       )
-      .all(testFile, `%"${testFunction}"%`) as VerificationRow[];
+      .all(testFile, `%"${escapeLike(testFunction)}"%`) as VerificationRow[];
     return rows.map((r) => this.toRecord(r));
   }
 
@@ -174,10 +178,10 @@ export class VerificationStore {
     const rows = this.db
       .query(
         `SELECT * FROM verifications
-         WHERE test_file = ? AND status = 'needs_fix' AND test_functions LIKE ?
+         WHERE test_file = ? AND status = 'needs_fix' AND test_functions LIKE ? ESCAPE '\\'
          ORDER BY created_at DESC`,
       )
-      .all(testFile, `%"${testFunction}"%`) as VerificationRow[];
+      .all(testFile, `%"${escapeLike(testFunction)}"%`) as VerificationRow[];
     return rows.map((r) => this.toRecord(r));
   }
 
