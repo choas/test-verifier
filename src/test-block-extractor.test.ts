@@ -197,6 +197,165 @@ import { add } from './math';
     const blocks = extractTestBlocks(source);
     expect(blocks).toHaveLength(0);
   });
+
+  test("handles 3-level nested describes with assertions at leaf", () => {
+    const source = `
+describe('api', () => {
+  describe('auth', () => {
+    describe('login', () => {
+      test('validates email', () => {
+        expect(validate("test@example.com")).toBe(true);
+      });
+      test('rejects invalid', () => {
+        expect(validate("bad")).toBe(false);
+      });
+    });
+  });
+});
+`;
+    const blocks = extractTestBlocks(source);
+    expect(blocks).toHaveLength(1);
+    expect(blocks[0].type).toBe("describe");
+    expect(blocks[0].name).toBe("api");
+    expect(blocks[0].children).toHaveLength(1);
+
+    const auth = blocks[0].children[0];
+    expect(auth.type).toBe("describe");
+    expect(auth.name).toBe("auth");
+    expect(auth.children).toHaveLength(1);
+
+    const login = auth.children[0];
+    expect(login.type).toBe("describe");
+    expect(login.name).toBe("login");
+    expect(login.children).toHaveLength(2);
+    expect(login.children[0].name).toBe("validates email");
+    expect(login.children[0].assertions).toHaveLength(1);
+    expect(login.children[1].name).toBe("rejects invalid");
+    expect(login.children[1].assertions).toHaveLength(1);
+  });
+
+  test("handles mixed nesting: tests at multiple levels", () => {
+    const source = `
+describe('suite', () => {
+  test('top-level test', () => {
+    expect(1).toBe(1);
+  });
+  describe('nested', () => {
+    test('nested test', () => {
+      expect(2).toBe(2);
+    });
+    describe('deeply nested', () => {
+      test('deep test', () => {
+        expect(3).toBe(3);
+      });
+    });
+  });
+});
+`;
+    const blocks = extractTestBlocks(source);
+    expect(blocks).toHaveLength(1);
+    const suite = blocks[0];
+    expect(suite.children).toHaveLength(2);
+    expect(suite.children[0].type).toBe("test");
+    expect(suite.children[0].name).toBe("top-level test");
+    expect(suite.children[1].type).toBe("describe");
+    expect(suite.children[1].children).toHaveLength(2);
+    expect(suite.children[1].children[0].type).toBe("test");
+    expect(suite.children[1].children[1].type).toBe("describe");
+    expect(suite.children[1].children[1].children).toHaveLength(1);
+    expect(suite.children[1].children[1].children[0].name).toBe("deep test");
+  });
+
+  test("handles nested describe with skip at parent level", () => {
+    const source = `
+describe.skip('disabled suite', () => {
+  describe('inner', () => {
+    test('should not run', () => {
+      expect(1).toBe(1);
+    });
+  });
+});
+`;
+    const blocks = extractTestBlocks(source);
+    expect(blocks).toHaveLength(1);
+    expect(blocks[0].skip).toBe(true);
+    expect(blocks[0].children).toHaveLength(1);
+    expect(blocks[0].children[0].type).toBe("describe");
+    expect(blocks[0].children[0].children).toHaveLength(1);
+  });
+
+  test("handles non-ASCII test names", () => {
+    const source = `
+describe('国際化', () => {
+  test('日本語テスト', () => {
+    expect(translate("hello")).toBe("こんにちは");
+  });
+  test('Ünïcödé characters: àéîõü', () => {
+    expect(normalize("café")).toBe("cafe");
+  });
+  test('emoji test 🎉', () => {
+    expect(getEmoji()).toBe("👋");
+  });
+});
+`;
+    const blocks = extractTestBlocks(source);
+    expect(blocks).toHaveLength(1);
+    expect(blocks[0].name).toBe("国際化");
+    expect(blocks[0].children).toHaveLength(3);
+    expect(blocks[0].children[0].name).toBe("日本語テスト");
+    expect(blocks[0].children[1].name).toBe("Ünïcödé characters: àéîõü");
+    expect(blocks[0].children[2].name).toBe("emoji test 🎉");
+  });
+
+  test("handles multi-line assertion chains", () => {
+    const source = `
+test('complex assertions', () => {
+  expect(result)
+    .not
+    .toBe(null);
+  expect(data).toEqual({
+    id: 1,
+    name: "test",
+    nested: { a: true }
+  });
+});
+`;
+    const blocks = extractTestBlocks(source);
+    expect(blocks).toHaveLength(1);
+    expect(blocks[0].assertions).toHaveLength(2);
+    expect(blocks[0].assertions[0].matcher).toBe("not.toBe");
+    expect(blocks[0].assertions[1].matcher).toBe("toEqual");
+  });
+
+  test("handles resolves.not chain", () => {
+    const source = `
+test('async negation', async () => {
+  await expect(asyncFn()).resolves.not.toBe(null);
+});
+`;
+    const blocks = extractTestBlocks(source);
+    expect(blocks[0].assertions).toHaveLength(1);
+    expect(blocks[0].assertions[0].matcher).toBe("resolves.not.toBe");
+  });
+
+  test("handles multiple sibling describes", () => {
+    const source = `
+describe('module A', () => {
+  test('a1', () => { expect(1).toBe(1); });
+});
+describe('module B', () => {
+  test('b1', () => { expect(2).toBe(2); });
+});
+describe('module C', () => {
+  test('c1', () => { expect(3).toBe(3); });
+});
+`;
+    const blocks = extractTestBlocks(source);
+    expect(blocks).toHaveLength(3);
+    expect(blocks[0].name).toBe("module A");
+    expect(blocks[1].name).toBe("module B");
+    expect(blocks[2].name).toBe("module C");
+  });
 });
 
 describe("extractTestBlocksPair", () => {
