@@ -82,9 +82,17 @@ export async function auditCompact(cwd: string = process.cwd()): Promise<void> {
 
   const approvedDir = statusDir(cwd, "approved");
   const { readdir } = await import("node:fs/promises");
-  const files = (await readdir(approvedDir).catch(() => [] as string[]))
-    .filter((f) => f.endsWith(".md"))
-    .sort();
+  let fileList: string[];
+  try {
+    fileList = await readdir(approvedDir);
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === "ENOENT") {
+      fileList = [];
+    } else {
+      throw err;
+    }
+  }
+  const files = fileList.filter((f) => f.endsWith(".md")).sort();
 
   const entries: ArchiveEntry[] = [];
 

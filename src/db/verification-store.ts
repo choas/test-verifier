@@ -1,6 +1,7 @@
 import { Database } from "bun:sqlite";
 import { join } from "node:path";
-import type { Severity, StubStatus } from "../types";
+import { z } from "zod";
+import { SeveritySchema, StubStatusSchema, type Severity, type StubStatus } from "../types";
 
 export interface VerificationRow {
   id: string;
@@ -34,6 +35,36 @@ export interface VerificationRecord {
   reviewer: string | null;
   rationale: string | null;
   parentVerificationId: string | null;
+}
+
+const VerificationRowSchema = z.object({
+  id: z.string(),
+  test_file: z.string(),
+  test_functions: z.string(),
+  rule: z.string(),
+  severity: z.string(),
+  status: z.string(),
+  commit_sha: z.string(),
+  parent_commit: z.string(),
+  diff_hash: z.string(),
+  created_at: z.string(),
+  updated_at: z.string(),
+  reviewer: z.string().nullable(),
+  rationale: z.string().nullable(),
+  parent_verification_id: z.string().nullable(),
+});
+
+const SummaryRowSchema = z.object({
+  status: z.string(),
+  count: z.number(),
+});
+
+function parseRow(raw: unknown): VerificationRow {
+  return VerificationRowSchema.parse(raw);
+}
+
+function parseRows(raw: unknown[]): VerificationRow[] {
+  return raw.map((r) => VerificationRowSchema.parse(r));
 }
 
 function escapeLike(value: string): string {
@@ -126,16 +157,19 @@ export class VerificationStore {
   }
 
   getById(id: string): VerificationRecord | null {
-    const row = this.db
+    const raw = this.db
       .query("SELECT * FROM verifications WHERE id = ?")
-      .get(id) as VerificationRow | null;
-    return row ? this.toRecord(row) : null;
+      .get(id);
+    if (!raw) return null;
+    return this.toRecord(parseRow(raw));
   }
 
   findByTestFile(testFile: string): VerificationRecord[] {
-    const rows = this.db
-      .query("SELECT * FROM verifications WHERE test_file = ? ORDER BY created_at DESC")
-      .all(testFile) as VerificationRow[];
+    const rows = parseRows(
+      this.db
+        .query("SELECT * FROM verifications WHERE test_file = ? ORDER BY created_at DESC")
+        .all(testFile),
+    );
     return rows.map((r) => this.toRecord(r));
   }
 
@@ -143,31 +177,37 @@ export class VerificationStore {
     testFile: string,
     testFunction: string,
   ): VerificationRecord[] {
-    const rows = this.db
-      .query(
-        `SELECT * FROM verifications
-         WHERE test_file = ? AND test_functions LIKE ? ESCAPE '\\'
-         ORDER BY created_at DESC`,
-      )
-      .all(testFile, `%"${escapeLike(testFunction)}"%`) as VerificationRow[];
+    const rows = parseRows(
+      this.db
+        .query(
+          `SELECT * FROM verifications
+           WHERE test_file = ? AND test_functions LIKE ? ESCAPE '\\'
+           ORDER BY created_at DESC`,
+        )
+        .all(testFile, `%"${escapeLike(testFunction)}"%`),
+    );
     return rows.map((r) => this.toRecord(r));
   }
 
   findByStatus(status: StubStatus): VerificationRecord[] {
-    const rows = this.db
-      .query("SELECT * FROM verifications WHERE status = ? ORDER BY created_at DESC")
-      .all(status) as VerificationRow[];
+    const rows = parseRows(
+      this.db
+        .query("SELECT * FROM verifications WHERE status = ? ORDER BY created_at DESC")
+        .all(status),
+    );
     return rows.map((r) => this.toRecord(r));
   }
 
   findNeedsFixForTestFile(testFile: string): VerificationRecord[] {
-    const rows = this.db
-      .query(
-        `SELECT * FROM verifications
-         WHERE test_file = ? AND status = 'needs_fix'
-         ORDER BY created_at DESC`,
-      )
-      .all(testFile) as VerificationRow[];
+    const rows = parseRows(
+      this.db
+        .query(
+          `SELECT * FROM verifications
+           WHERE test_file = ? AND status = 'needs_fix'
+           ORDER BY created_at DESC`,
+        )
+        .all(testFile),
+    );
     return rows.map((r) => this.toRecord(r));
   }
 
@@ -175,13 +215,15 @@ export class VerificationStore {
     testFile: string,
     testFunction: string,
   ): VerificationRecord[] {
-    const rows = this.db
-      .query(
-        `SELECT * FROM verifications
-         WHERE test_file = ? AND status = 'needs_fix' AND test_functions LIKE ? ESCAPE '\\'
-         ORDER BY created_at DESC`,
-      )
-      .all(testFile, `%"${escapeLike(testFunction)}"%`) as VerificationRow[];
+    const rows = parseRows(
+      this.db
+        .query(
+          `SELECT * FROM verifications
+           WHERE test_file = ? AND status = 'needs_fix' AND test_functions LIKE ? ESCAPE '\\'
+           ORDER BY created_at DESC`,
+        )
+        .all(testFile, `%"${escapeLike(testFunction)}"%`),
+    );
     return rows.map((r) => this.toRecord(r));
   }
 
@@ -200,20 +242,22 @@ export class VerificationStore {
   }
 
   getChildren(parentId: string): VerificationRecord[] {
-    const rows = this.db
-      .query(
-        `SELECT * FROM verifications
-         WHERE parent_verification_id = ?
-         ORDER BY created_at ASC`,
-      )
-      .all(parentId) as VerificationRow[];
+    const rows = parseRows(
+      this.db
+        .query(
+          `SELECT * FROM verifications
+           WHERE parent_verification_id = ?
+           ORDER BY created_at ASC`,
+        )
+        .all(parentId),
+    );
     return rows.map((r) => this.toRecord(r));
   }
 
   summary(): Record<StubStatus, number> {
-    const rows = this.db
+    const rawRows = this.db
       .query("SELECT status, COUNT(*) as count FROM verifications GROUP BY status")
-      .all() as { status: string; count: number }[];
+      .all();
 
     const result: Record<string, number> = {
       pending: 0,
@@ -222,8 +266,11 @@ export class VerificationStore {
       needs_fix: 0,
       resolved: 0,
     };
-    for (const row of rows) {
-      result[row.status] = row.count;
+    for (const raw of rawRows) {
+      const row = SummaryRowSchema.parse(raw);
+      if (row.status in result) {
+        result[row.status] = row.count;
+      }
     }
     return result as Record<StubStatus, number>;
   }
@@ -233,21 +280,20 @@ export class VerificationStore {
   }
 
   private toRecord(row: VerificationRow): VerificationRecord {
-    let testFunctions: string[];
-    try {
-      const parsed = JSON.parse(row.test_functions || "[]");
-      testFunctions = Array.isArray(parsed) ? parsed : [];
-    } catch {
-      testFunctions = [];
+    const testFunctionsResult = z.array(z.string()).safeParse(
+      JSON.parse(row.test_functions || "[]"),
+    );
+    if (!testFunctionsResult.success) {
+      console.error(`  warn: corrupt test_functions JSON for ${row.id}, defaulting to []`);
     }
 
     return {
       id: row.id,
       testFile: row.test_file,
-      testFunctions,
+      testFunctions: testFunctionsResult.success ? testFunctionsResult.data : [],
       rule: row.rule,
-      severity: row.severity as Severity,
-      status: row.status as StubStatus,
+      severity: SeveritySchema.parse(row.severity),
+      status: StubStatusSchema.parse(row.status),
       commit: row.commit_sha ?? "",
       parentCommit: row.parent_commit,
       diffHash: row.diff_hash,

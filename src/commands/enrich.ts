@@ -160,8 +160,8 @@ async function resolveRelatedProdDiffs(
       cwd,
     );
     if (sameCommitDiff) parts.push(sameCommitDiff);
-  } catch {
-    // Commits may no longer exist after rebase
+  } catch (e) {
+    console.error(`  warn: could not diff ${parentCommit.slice(0, 7)}..${commit.slice(0, 7)} for related prod files: ${e instanceof Error ? e.message : String(e)}`);
   }
 
   if (lookback > 0) {

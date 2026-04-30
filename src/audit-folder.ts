@@ -60,8 +60,9 @@ export async function listByStatus(repoRoot: string, status: StubStatus): Promis
       safe.push(e);
     }
     return safe.sort();
-  } catch {
-    return [];
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === "ENOENT") return [];
+    throw err;
   }
 }
 
@@ -108,8 +109,9 @@ export async function pruneOldFiles(
   let entries: string[];
   try {
     entries = await readdir(dir);
-  } catch {
-    return 0;
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === "ENOENT") return 0;
+    throw err;
   }
 
   for (const entry of entries) {
@@ -122,8 +124,10 @@ export async function pruneOldFiles(
         await unlink(filePath);
         removed++;
       }
-    } catch {
-      // file may have been removed concurrently
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code !== "ENOENT") {
+        console.error(`  warn: failed to prune ${entry}: ${(err as Error).message}`);
+      }
     }
   }
 
