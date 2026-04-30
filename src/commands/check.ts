@@ -144,6 +144,7 @@ export async function check(
 
   const fileDiffs = parseDiff(rawDiff);
   const rawDiffByFile = splitRawDiffByFile(rawDiff);
+  rawDiff = "";
 
   const store = new VerificationStore(auditDir(cwd));
 
@@ -207,18 +208,19 @@ export async function check(
     }
 
     for (const resolvedId of resolvedIds) {
-      store.updateStatus(resolvedId, "resolved");
-      const resolvedRecord = store.getById(resolvedId);
-      if (resolvedRecord) {
-        const nfFilename = `${resolvedId.replace(/^tv_/, "")}.md`;
-        try {
-          await moveToResolved(cwd, nfFilename, "needs_fix");
-        } catch {
-          // file may not exist if only tracked in DB
-        }
-        console.log(`  RESOLVED ${testFilePath} (fixes ${resolvedId})`);
-        resolvedCount++;
+      const nfFilename = `${resolvedId.replace(/^tv_/, "")}.md`;
+      const nfPath = join(statusDir(cwd, "needs_fix"), nfFilename);
+      try {
+        const mdContent = await readFile(nfPath, "utf-8");
+        const updated = mdContent.replace(/^status:\s*.+$/m, "status: resolved");
+        await writeFile(nfPath, updated);
+        await moveToResolved(cwd, nfFilename, "needs_fix");
+      } catch (err: unknown) {
+        if ((err as NodeJS.ErrnoException).code !== "ENOENT") throw err;
       }
+      store.updateStatus(resolvedId, "resolved");
+      console.log(`  RESOLVED ${testFilePath} (fixes ${resolvedId})`);
+      resolvedCount++;
     }
 
     const prodFiles =
@@ -226,6 +228,7 @@ export async function check(
         ? await getRelatedProdFiles(toLabel, testFilePath, cwd)
         : [];
     const fileRawDiff = rawDiffByFile.get(testFilePath) ?? "";
+    rawDiffByFile.delete(testFilePath);
 
     const { filename, content, stub } = generateStubMarkdown({
       ruleResult,

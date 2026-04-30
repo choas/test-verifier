@@ -115,7 +115,7 @@ export class VerificationStore {
   ): void {
     this.db.run(
       `UPDATE verifications
-       SET status = ?, updated_at = ?, reviewer = COALESCE(?, reviewer), rationale = COALESCE(?, rationale)
+       SET status = ?, updated_at = ?, reviewer = ?, rationale = ?
        WHERE id = ?`,
       [status, new Date().toISOString(), reviewer ?? null, rationale ?? null, id],
     );
