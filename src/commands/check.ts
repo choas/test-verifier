@@ -22,6 +22,7 @@ import {
 import { parseDiff } from "../diff-parser";
 import { runRuleEngine } from "../rule-engine";
 import { generateStubMarkdown } from "../markdown-writer";
+import { parseMarkdown } from "../markdown-reader";
 import { extractTestBlocks } from "../test-block-extractor";
 import { VerificationStore, type VerificationRecord } from "../db/verification-store";
 import { maxSeverity } from "../rule-engine";
@@ -50,8 +51,9 @@ async function getFileFromWorkingTree(
   try {
     const safePath = resolveWithinBase(cwd, filePath);
     return await readFile(safePath, "utf-8");
-  } catch {
-    return "";
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === "ENOENT") return "";
+    throw err;
   }
 }
 
@@ -216,13 +218,20 @@ export async function check(
       const nfPath = join(statusDir(cwd, "needs_fix"), nfFilename);
       try {
         const mdContent = await readFile(nfPath, "utf-8");
-        const updated = mdContent.replace(/^status:\s*.+$/m, "status: resolved");
+        parseMarkdown(mdContent);
+        let updated = mdContent.replace(/^status:\s*.+$/m, "status: resolved");
+        const resolveMarker = "## Decision";
+        const resolveIdx = updated.indexOf(resolveMarker);
+        if (resolveIdx !== -1) {
+          const beforeDecision = updated.slice(0, resolveIdx + resolveMarker.length);
+          updated = beforeDecision + `\n\nauto-resolved\nrationale: original rules no longer triggered\ndate: ${new Date().toISOString()}\n`;
+        }
         await writeFile(nfPath, updated);
         await moveToResolved(cwd, nfFilename, "needs_fix");
       } catch (err: unknown) {
         if ((err as NodeJS.ErrnoException).code !== "ENOENT") throw err;
       }
-      store.updateStatus(resolvedId, "resolved");
+      store.updateStatus(resolvedId, "resolved", "auto-resolved", "original rules no longer triggered");
       console.log(`  RESOLVED ${testFilePath} (fixes ${resolvedId})`);
       resolvedCount++;
     }
@@ -271,12 +280,19 @@ export async function check(
     };
     store.insert(record);
 
-    const isAutoApproved = (config.policy.autoApprove as string[]).includes(
-      ruleResult.overallSeverity,
-    );
+    const autoApproveSet = new Set<string>(config.policy.autoApprove);
+    const isAutoApproved = autoApproveSet.has(ruleResult.overallSeverity);
     if (isAutoApproved) {
+      const approveMarker = "## Decision";
+      const approveIdx = content.indexOf(approveMarker);
+      if (approveIdx !== -1) {
+        const beforeApprove = content.slice(0, approveIdx + approveMarker.length);
+        const autoContent = (beforeApprove + `\n\nauto-approved by policy\nrationale: severity ${ruleResult.overallSeverity} is in autoApprove list\n`)
+          .replace(/^status: pending$/m, "status: approved");
+        await writeFile(pendingPath, autoContent);
+      }
       await moveToApproved(cwd, filename);
-      store.updateStatus(stub.id, "approved");
+      store.updateStatus(stub.id, "approved", "auto-approved", `severity ${ruleResult.overallSeverity} is in autoApprove list`);
       autoApprovedCount++;
     }
 
@@ -294,9 +310,19 @@ export async function check(
     await writeHead(cwd, toLabel);
   }
 
+  const pendingCount = stubCount - autoApprovedCount;
   const parts = [`${stubCount} file(s) analyzed`, `${autoApprovedCount} auto-approved`];
   if (resolvedCount > 0) {
     parts.push(`${resolvedCount} needs_fix resolved`);
   }
   console.log(`test-verifier: ${parts.join(", ")}.`);
+
+  if (pendingCount > 0) {
+    console.error(
+      `test-verifier: ${pendingCount} finding(s) require review. Run 'test-verifier review' or 'test-verifier enrich'.`,
+    );
+    process.exit(1);
+  } else {
+    console.log("test-verifier: all clear — no findings require review.");
+  }
 }

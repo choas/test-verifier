@@ -13,13 +13,20 @@ function deriveRule(findings: ParsedFinding[]): string {
 }
 
 function extractReviewer(decision: string): string | null {
-  const match = decision.match(/\*\*Reviewer:\*\*\s*(.+)/);
-  return match ? match[1].trim() : null;
+  const mdMatch = decision.match(/\*\*Reviewer:\*\*\s*(.+)/);
+  if (mdMatch) return mdMatch[1].trim();
+  const byMatch = decision.match(/^(?:approved|rejected|needs_fix|auto-approved)\s+by\s+(.+)$/m);
+  if (byMatch) return byMatch[1].trim();
+  if (/^auto-resolved$/m.test(decision)) return "auto-resolved";
+  return null;
 }
 
 function extractRationale(decision: string): string | null {
-  const match = decision.match(/\*\*Rationale:\*\*\s*(.+)/);
-  return match ? match[1].trim() : null;
+  const mdMatch = decision.match(/\*\*Rationale:\*\*\s*(.+)/);
+  if (mdMatch) return mdMatch[1].trim();
+  const plainMatch = decision.match(/^rationale:\s*(.+)$/m);
+  if (plainMatch) return plainMatch[1].trim();
+  return null;
 }
 
 export async function sync(cwd: string = process.cwd()): Promise<void> {
@@ -34,8 +41,9 @@ export async function sync(cwd: string = process.cwd()): Promise<void> {
       let files: string[];
       try {
         files = await readdir(statusDir(cwd, status));
-      } catch {
-        continue;
+      } catch (err) {
+        if ((err as NodeJS.ErrnoException).code === "ENOENT") continue;
+        throw err;
       }
 
       const mdFiles = files.filter((f) => f.endsWith(".md") && !f.startsWith("."));
@@ -78,6 +86,7 @@ export async function sync(cwd: string = process.cwd()): Promise<void> {
 
   console.log(`test-verifier: synced ${total} finding(s) into database.`);
   if (errors > 0) {
-    console.log(`  ${errors} file(s) skipped due to errors.`);
+    console.error(`test-verifier: ${errors} file(s) skipped due to errors.`);
+    process.exit(1);
   }
 }
