@@ -1,39 +1,33 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync, chmodSync } from "node:fs";
-import { join, dirname } from "node:path";
+import { existsSync, mkdirSync, writeFileSync, chmodSync } from "node:fs";
+import { join } from "node:path";
 import { execFileSync } from "node:child_process";
 
-const HOOKS = ["pre-commit", "pre-push"] as const;
-
-function findTemplateDir(): string {
-  return join(dirname(import.meta.dir), "hooks");
-}
+const HOOK_CONTENTS: Record<string, string> = {
+  "pre-commit": `#!/usr/bin/env sh
+bunx test-verifier check
+`,
+  "pre-push": `#!/usr/bin/env sh
+bunx test-verifier enrich && bunx test-verifier audit verify --no-pending --no-rejected
+`,
+};
 
 export async function setupHooks(cwd: string = process.cwd()): Promise<void> {
   const huskyDir = join(cwd, ".husky");
 
   if (!existsSync(huskyDir)) {
-    console.log("Initializing Husky...");
+    console.log("Initializing git hooks...");
     mkdirSync(huskyDir, { recursive: true });
     execFileSync("git", ["config", "core.hooksPath", ".husky"], { cwd });
   }
 
-  const templateDir = findTemplateDir();
-
-  for (const hook of HOOKS) {
-    const src = join(templateDir, hook);
+  for (const [hook, content] of Object.entries(HOOK_CONTENTS)) {
     const dest = join(huskyDir, hook);
 
-    if (!existsSync(src)) {
-      console.error(`Template not found: ${src}`);
-      process.exit(1);
-    }
-
-    const content = readFileSync(src, "utf-8");
     writeFileSync(dest, content);
     chmodSync(dest, 0o755);
 
     console.log(`Installed ${hook} → .husky/${hook}`);
   }
 
-  console.log("\nHusky hooks installed. Hooks will run automatically on commit and push.");
+  console.log("\nGit hooks installed. Hooks will run automatically on commit and push.");
 }
