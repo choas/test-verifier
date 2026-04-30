@@ -156,7 +156,8 @@ function parseTestCall(call: CallExpression): TestBlock | null {
     if (todo && args.length >= 1) {
       const nameArg = args[0];
       const testName = extractStringLiteral(nameArg);
-      const stmt = call.getParent()!;
+      const stmt = call.getParent();
+      if (!stmt) return null;
       return {
         type: name as TestBlock["type"],
         name: testName,
@@ -176,7 +177,8 @@ function parseTestCall(call: CallExpression): TestBlock | null {
   const nameArg = args[0];
   const bodyArg = args[1];
   const testName = extractStringLiteral(nameArg);
-  const stmt = call.getParent()!;
+  const stmt = call.getParent();
+  if (!stmt) return null;
 
   const type = name as TestBlock["type"];
   const assertions = type === "describe" ? [] : collectAssertions(bodyArg);

@@ -251,7 +251,8 @@ function classifyTestBlockChanges(input: SafeClassifierInput): Finding[] {
 
   let hasNewAssertions = false;
   for (const [, oldTest] of beforeByName) {
-    const newTest = afterByName.get(oldTest.qualifiedName)!;
+    const newTest = afterByName.get(oldTest.qualifiedName);
+    if (!newTest) continue;
 
     const newAssertionSet = new Set(
       newTest.assertions.map((a) => normalizeAssertionText(a.text)),

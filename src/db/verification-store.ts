@@ -9,7 +9,7 @@ export interface VerificationRow {
   rule: string;
   severity: string;
   status: string;
-  commit: string;
+  commit_sha: string;
   parent_commit: string;
   diff_hash: string;
   created_at: string;
@@ -233,14 +233,22 @@ export class VerificationStore {
   }
 
   private toRecord(row: VerificationRow): VerificationRecord {
+    let testFunctions: string[];
+    try {
+      const parsed = JSON.parse(row.test_functions || "[]");
+      testFunctions = Array.isArray(parsed) ? parsed : [];
+    } catch {
+      testFunctions = [];
+    }
+
     return {
       id: row.id,
       testFile: row.test_file,
-      testFunctions: JSON.parse(row.test_functions || "[]"),
+      testFunctions,
       rule: row.rule,
       severity: row.severity as Severity,
       status: row.status as StubStatus,
-      commit: (row as any).commit_sha ?? "",
+      commit: row.commit_sha ?? "",
       parentCommit: row.parent_commit,
       diffHash: row.diff_hash,
       createdAt: row.created_at,
