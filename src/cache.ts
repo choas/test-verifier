@@ -67,8 +67,15 @@ export class AnalysisCache {
       .query("SELECT response FROM analysis_cache WHERE key = ?")
       .get(key);
     if (!raw) return null;
-    const row = CacheRowSchema.parse(raw);
-    return LlmResponseSchema.parse(JSON.parse(row.response));
+    
+    try {
+      const row = CacheRowSchema.parse(raw);
+      return LlmResponseSchema.parse(JSON.parse(row.response));
+    } catch (e) {
+      console.error(`  warn: deleting corrupt cache entry for key ${key}`);
+      this.db.run("DELETE FROM analysis_cache WHERE key = ?", [key]);
+      return null;
+    }
   }
 
   set(key: string, response: LlmResponse, model: string): void {

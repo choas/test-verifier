@@ -280,11 +280,16 @@ export class VerificationStore {
   }
 
   private toRecord(row: VerificationRow): VerificationRecord {
-    const testFunctionsResult = z.array(z.string()).safeParse(
-      JSON.parse(row.test_functions || "[]"),
-    );
+    let parsedFunctions: unknown = [];
+    try {
+      parsedFunctions = JSON.parse(row.test_functions || "[]");
+    } catch (e) {
+      console.error(`  warn: unparseable test_functions JSON for ${row.id}, defaulting to []`);
+    }
+
+    const testFunctionsResult = z.array(z.string()).safeParse(parsedFunctions);
     if (!testFunctionsResult.success) {
-      console.error(`  warn: corrupt test_functions JSON for ${row.id}, defaulting to []`);
+      console.error(`  warn: corrupt test_functions schema for ${row.id}, defaulting to []`);
     }
 
     return {
