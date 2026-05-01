@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { $ } from "bun";
 import { auditDir, listByStatus } from "../audit-folder";
 import { parseMarkdown } from "../markdown-reader";
-import type { Severity, StubStatus } from "../types";
+import type { Severity } from "../types";
 
 interface AuditChange {
   added: string[];

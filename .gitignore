@@ -4,3 +4,4 @@ node_modules/
 .test-verifier/*.sqlite-shm
 .test-verifier/*.sqlite-wal
 code_review_prompts.md
+temp_push.sh

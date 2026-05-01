@@ -79,7 +79,17 @@ export async function history(cwd: string = process.cwd()): Promise<void> {
       console.log();
     }
 
-    const summary = store.summary();
+    const summary: Record<string, number> = {
+      pending: 0,
+      approved: 0,
+      rejected: 0,
+      needs_fix: 0,
+      resolved: 0,
+    };
+    for (const r of records) {
+      summary[r.status] = (summary[r.status] || 0) + 1;
+    }
+
     const parts: string[] = [];
     for (const [status, count] of Object.entries(summary)) {
       if (count > 0) {
@@ -88,7 +98,7 @@ export async function history(cwd: string = process.cwd()): Promise<void> {
       }
     }
     if (parts.length > 0) {
-      console.log(`Overall: ${parts.join("  ")}`);
+      console.log(`Summary: ${parts.join("  ")}`);
     }
   } finally {
     store.close();

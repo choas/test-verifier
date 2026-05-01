@@ -62,7 +62,7 @@ export async function list(options: ListOptions = {}, cwd: string = process.cwd(
       records.push(...store.findByStatus(s));
     }
 
-    records.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    records.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
     if (records.length === 0) {
       const label = options.status
@@ -84,7 +84,11 @@ export async function list(options: ListOptions = {}, cwd: string = process.cwd(
     console.log();
 
     for (const record of records) {
-      console.log(formatRecord(record));
+      const displayRecord = {
+        ...record,
+        createdAt: new Date(record.createdAt).toISOString()
+      };
+      console.log(formatRecord(displayRecord));
       console.log();
     }
 

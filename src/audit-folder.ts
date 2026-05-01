@@ -1,4 +1,4 @@
-import { readFile, writeFile, mkdir, rename, readdir, stat, lstat, unlink } from "node:fs/promises";
+import { readFile, writeFile, mkdir, rename, readdir, lstat, unlink } from "node:fs/promises";
 import { join } from "node:path";
 import type { StubStatus } from "./types";
 import { assertSafeFilename, assertValidSha } from "./path-guard";

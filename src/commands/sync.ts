@@ -7,7 +7,7 @@ import type { StubStatus } from "../types";
 
 const STATUS_DIRS: readonly StubStatus[] = ["pending", "approved", "rejected", "needs_fix", "resolved"];
 
-function deriveRule(findings: ParsedFinding[]): string {
+function combineSeverities(findings: ParsedFinding[]): string {
   if (findings.length === 0) return "safe";
   return findings.map((f) => f.severity).join(",");
 }
