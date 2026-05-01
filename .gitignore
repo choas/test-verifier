@@ -3,3 +3,4 @@ node_modules/
 .test-verifier/*.sqlite
 .test-verifier/*.sqlite-shm
 .test-verifier/*.sqlite-wal
+code_review_prompts.md
