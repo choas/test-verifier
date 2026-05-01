@@ -25,15 +25,15 @@ export async function approve(cwd: string = process.cwd()): Promise<void> {
 
   const updated = signFile(privateKey, content, "approved", email, rationale);
 
-  await writeFile(filePath, updated);
-  const dest = await moveToApproved(cwd, filename);
-
   const store = new VerificationStore(auditDir(cwd));
   try {
     store.updateStatus(stub.id, "approved", email, rationale);
   } finally {
     store.close();
   }
+
+  const dest = await moveToApproved(cwd, filename);
+  await writeFile(dest, updated);
 
   console.log(`Approved: ${stub.id}`);
   console.log(`  Moved to: ${dest}`);

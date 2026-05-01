@@ -180,6 +180,10 @@ async function resolveRelatedProdDiffs(
     }
   }
 
+  if (parts.length === 0) {
+    throw new Error(`Failed to resolve related prod diffs for: ${prodFiles.join(", ")}`);
+  }
+
   return parts.join("\n");
 }
 

@@ -20,12 +20,12 @@ async function markOneNeedsFix(
 
   const updated = signFile(privateKey, content, "needs_fix", email, rationale);
 
-  await writeFile(filePath, updated);
-  const dest = await moveToNeedsFix(cwd, filename);
-
   const fm = parseFrontMatter(content);
   const stubId = fm["id"] || filename.replace(/\.md$/, "");
   store.updateStatus(stubId, "needs_fix", email, rationale);
+
+  const dest = await moveToNeedsFix(cwd, filename);
+  await writeFile(dest, updated);
 
   return dest;
 }
@@ -54,19 +54,22 @@ export async function needsFix(cwd: string = process.cwd()): Promise<void> {
   }
   const rationale = Bun.argv[rationaleIdx + 1];
 
+  let pendingFiles: string[] = [];
+  if (allFlag) {
+    pendingFiles = await listByStatus(cwd, "pending");
+    if (pendingFiles.length === 0) {
+      console.log("No pending findings to mark as needs-fix.");
+      return;
+    }
+  }
+
   const { email, privateKey } = await loadSigningContext(cwd);
 
   const store = new VerificationStore(auditDir(cwd));
   try {
     if (allFlag) {
-      const pending = await listByStatus(cwd, "pending");
-      if (pending.length === 0) {
-        console.log("No pending findings to mark as needs-fix.");
-        return;
-      }
-
       let count = 0;
-      for (const filename of pending) {
+      for (const filename of pendingFiles) {
         const dest = await markOneNeedsFix(cwd, filename, rationale, email, privateKey, store);
         const id = filename.replace(/\.md$/, "");
         console.log(`Needs fix: ${id}`);
