@@ -1,14 +1,12 @@
-import { resolve, relative } from "node:path";
+import { resolve, relative, isAbsolute, win32, posix } from "node:path";
 import { lstat } from "node:fs/promises";
 
 export function assertSafeRelativePath(p: string): void {
   if (p.includes("\0")) {
     throw new Error(`Path contains null byte: ${JSON.stringify(p)}`);
   }
-  if (resolve("/", p) !== "/" + p.replace(/\\/g, "/")) {
-    if (p.startsWith("/") || p.startsWith("\\")) {
-      throw new Error(`Absolute path not allowed: ${p}`);
-    }
+  if (isAbsolute(p) || win32.isAbsolute(p) || posix.isAbsolute(p)) {
+    throw new Error(`Absolute path not allowed: ${p}`);
   }
   const segments = p.replace(/\\/g, "/").split("/");
   for (const seg of segments) {
