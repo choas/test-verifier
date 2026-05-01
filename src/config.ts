@@ -50,7 +50,7 @@ const rulesInner = z.object({
 const llmInner = z.object({
   provider: z.enum(["ollama", "anthropic"]).default("anthropic"),
   model: z.string().default("claude-sonnet-4-7"),
-  timeoutMs: z.number().int().positive().default(30_000),
+  timeoutMs: z.number().int().positive().optional(),
   apiKeyEnv: z.string().default("ANTHROPIC_API_KEY"),
   relatedProdLookback: z.number().int().min(0).default(0),
 });
@@ -65,10 +65,12 @@ const policyInner = z.object({
 });
 
 const auditInner = z.object({
-  folder: z.string().default(".test-verifier"),
   compactPeriod: z
     .enum(["month", "quarter", "year", "never"])
     .default("quarter"),
+  cacheTtlDays: z.number().int().positive().default(90),
+  cacheMaxEntries: z.number().int().positive().default(5000),
+  archiveRetentionDays: z.number().int().positive().default(365),
 });
 
 const cryptoInner = z.object({

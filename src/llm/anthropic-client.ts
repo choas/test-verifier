@@ -36,4 +36,19 @@ export class AnthropicClient implements LlmClient {
     const parsed = JSON.parse(trimmed);
     return LlmResponseSchema.parse(parsed);
   }
+
+  async chat(prompt: string): Promise<string> {
+    const response = await this.client.messages.create({
+      model: this.model,
+      max_tokens: 1024,
+      messages: [{ role: "user", content: prompt }],
+    });
+
+    const textBlock = response.content.find((b) => b.type === "text");
+    if (!textBlock || textBlock.type !== "text") {
+      throw new Error("Anthropic returned no text content");
+    }
+
+    return textBlock.text;
+  }
 }

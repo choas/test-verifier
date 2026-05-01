@@ -1,5 +1,5 @@
 import matter from "gray-matter";
-import { Severity, type StubFile, type StubStatus } from "./types";
+import { Severity, SeveritySchema, StubStatusSchema, type StubFile } from "./types";
 
 export interface ParsedFinding {
   severity: Severity;
@@ -13,9 +13,6 @@ export interface ParsedMarkdown {
   analysis: string;
   decision: string;
 }
-
-const VALID_SEVERITIES = new Set(Object.values(Severity));
-const VALID_STATUSES = new Set<string>(["pending", "approved", "rejected"]);
 
 export function parseMarkdown(raw: string): ParsedMarkdown {
   const { data, content } = matter(raw);
@@ -40,14 +37,14 @@ function stringifyDate(val: unknown): string {
 }
 
 function parseFrontMatter(data: Record<string, unknown>): StubFile {
-  const severity = String(data.severity ?? "");
-  if (!VALID_SEVERITIES.has(severity as Severity)) {
-    throw new Error(`Invalid severity in front matter: ${severity}`);
+  const severityResult = SeveritySchema.safeParse(data.severity);
+  if (!severityResult.success) {
+    throw new Error(`Invalid severity in front matter: ${String(data.severity ?? "")}`);
   }
 
-  const status = String(data.status ?? "");
-  if (!VALID_STATUSES.has(status)) {
-    throw new Error(`Invalid status in front matter: ${status}`);
+  const statusResult = StubStatusSchema.safeParse(data.status);
+  if (!statusResult.success) {
+    throw new Error(`Invalid status in front matter: ${String(data.status ?? "")}`);
   }
 
   const prodFiles = data.prod_files_related;
@@ -60,17 +57,29 @@ function parseFrontMatter(data: Record<string, unknown>): StubFile {
     prodFilesRelated = [String(prodFiles)];
   }
 
+  const testFuncs = data.test_functions;
+  let testFunctions: string[];
+  if (Array.isArray(testFuncs)) {
+    testFunctions = testFuncs.map(String);
+  } else if (testFuncs == null || testFuncs === "") {
+    testFunctions = [];
+  } else {
+    testFunctions = [String(testFuncs)];
+  }
+
   return {
     id: String(data.id ?? ""),
     created_at: stringifyDate(data.created_at),
-    severity: severity as Severity,
-    status: status as StubStatus,
+    severity: severityResult.data,
+    status: statusResult.data,
     llm_enriched: Boolean(data.llm_enriched),
     test_file: String(data.test_file ?? ""),
+    test_functions: testFunctions,
     prod_files_related: prodFilesRelated,
     commit: String(data.commit ?? ""),
     parent_commit: String(data.parent_commit ?? ""),
     diff_hash: String(data.diff_hash ?? ""),
+    parent_verification_id: data.parent_verification_id ? String(data.parent_verification_id) : undefined,
   };
 }
 
@@ -81,9 +90,10 @@ function parseFindings(text: string): ParsedFinding[] {
   for (const line of text.split("\n")) {
     const match = line.match(FINDING_RE);
     if (!match) continue;
-    const [, severity, message] = match;
-    if (!VALID_SEVERITIES.has(severity as Severity)) continue;
-    findings.push({ severity: severity as Severity, message });
+    const [, rawSeverity, message] = match;
+    const severityResult = SeveritySchema.safeParse(rawSeverity);
+    if (!severityResult.success) continue;
+    findings.push({ severity: severityResult.data, message });
   }
   return findings;
 }

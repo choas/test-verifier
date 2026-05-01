@@ -1,9 +1,15 @@
+import { z } from "zod";
+
 export enum Severity {
   SAFE = "SAFE",
   LOW = "LOW",
   SUSPICIOUS = "SUSPICIOUS",
   CRITICAL = "CRITICAL",
 }
+
+export const SeveritySchema = z.nativeEnum(Severity);
+
+export const StubStatusSchema = z.enum(["pending", "approved", "rejected", "needs_fix", "resolved"]);
 
 export interface Finding {
   rule: string;
@@ -14,7 +20,7 @@ export interface Finding {
   after: string;
 }
 
-export type StubStatus = "pending" | "approved" | "rejected";
+export type StubStatus = "pending" | "approved" | "rejected" | "needs_fix" | "resolved";
 
 export interface StubFile {
   id: string;
@@ -23,22 +29,11 @@ export interface StubFile {
   status: StubStatus;
   llm_enriched: boolean;
   test_file: string;
+  test_functions: string[];
   prod_files_related: string[];
   commit: string;
   parent_commit: string;
   diff_hash: string;
+  parent_verification_id?: string;
 }
 
-export interface AnalysisResult {
-  summary: string;
-  detail: string;
-  concerns: string[];
-  overallSeverity: Severity;
-  tautologyDetected: boolean;
-}
-
-export interface DecisionRecord {
-  approver: string;
-  rationale: string;
-  signature: string;
-}

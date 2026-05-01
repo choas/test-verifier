@@ -67,7 +67,7 @@ Set up git hooks (optional but recommended):
 bunx test-verifier setup-hooks
 ```
 
-This installs Husky pre-commit and pre-push hooks that run the two-phase pipeline automatically.
+This installs pre-commit and pre-push git hooks that run the two-phase pipeline automatically.
 
 Set your API key if using Claude:
 
@@ -115,13 +115,20 @@ bunx test-verifier review
 bunx test-verifier approve <finding-id> --rationale "reason"
 bunx test-verifier reject <finding-id> --rationale "reason"
 
+# Mark a finding as needing a fix (blocks push until resolved)
+bunx test-verifier needs-fix <finding-id> --rationale "reason"
+
+# Show verification history for a test file
+bunx test-verifier history src/utils.test.ts
+bunx test-verifier history src/utils.test.ts --function "should validate input"
+
 # Verify audit trail (used by pre-push hook)
 bunx test-verifier audit verify
 
 # Compact old approved findings into archives
 bunx test-verifier audit compact --before=2025-01-01
 
-# Set up Husky git hooks
+# Set up git hooks
 bunx test-verifier setup-hooks
 ```
 
@@ -132,6 +139,50 @@ Once hooks are installed, the workflow is automatic:
 1. **Commit** -- pre-commit hook runs `check`, creates pending stubs (does not block commit)
 2. **Push** -- pre-push hook runs `enrich` then `verify`, blocks push if unresolved findings remain
 3. **Review** -- run `bunx test-verifier review` to approve or reject findings before pushing
+
+### Needs-Fix Workflow
+
+When a reviewer determines that a test change is wrong and needs to be reverted or corrected, they can mark it as `needs_fix` instead of simply rejecting it. This creates a tracked obligation that blocks push until the issue is resolved.
+
+```text
+1. Developer weakens a test (e.g. removes .toBe assertion)
+   └─ pre-commit hook runs `check`, creates a pending finding
+
+2. Reviewer marks the finding as needs-fix
+   └─ bunx test-verifier needs-fix <id> --rationale "toBe removed, must restore"
+   └─ finding moves to .test-verifier/needs_fix/
+
+3. Push is blocked
+   └─ pre-push hook sees needs_fix findings and refuses to push
+
+4. Developer fixes the test (e.g. restores .toBe)
+   └─ pre-commit hook runs `check` again
+   └─ check detects that the original rule no longer triggers
+   └─ finding auto-resolves → moves to .test-verifier/resolved/
+   └─ new finding is linked to the original via parent_verification_id
+
+5. Push succeeds
+   └─ no pending or needs_fix findings remain
+```
+
+The `history` command shows the full verification chain for any test file:
+
+```bash
+$ bunx test-verifier history src/utils.test.ts
+
+Verification history for src/utils.test.ts
+──────────────────────────────────────────
+[NEEDS_FIX] tv_2026-04-30T08-18_abc123  (linked parent)
+  severity: SUSPICIOUS  rule: weakened-assertion
+  reviewer: dev@example.com
+  rationale: toBe removed, must restore
+
+[RESOLVED] tv_2026-04-30T09-01_def456
+  severity: SAFE  rule: safe
+  parent: tv_2026-04-30T08-18_abc123
+```
+
+All verification records are stored in a local SQLite database (`.test-verifier/verifications.sqlite`) for fast querying by test file, function name, or status. The markdown files in the status directories remain the source of truth for signatures and audit trails; the database serves as an index for history and lineage lookups.
 
 ### npm Scripts
 
@@ -160,16 +211,48 @@ src/
   rules/                 # Individual detection rules
   llm/                   # LLM client (Anthropic, Ollama)
   crypto/                # Ed25519 signing for audit trail
-  hooks/                 # Git hook scripts
+  db/                    # SQLite verification store
+  commands/setup-hooks.ts # Git hook installer
 
 .test-verifier/          # Audit directory (created by init)
   pending/               # Findings awaiting review
   approved/              # Approved findings
   rejected/              # Rejected findings
+  needs_fix/             # Findings that require a code fix
+  resolved/              # Needs-fix findings that were resolved
   archive/               # Archived old findings
   keys/                  # Ed25519 keypairs
   cache.sqlite           # LLM response cache
+  verifications.sqlite   # Verification history database
 ```
+
+## Developer Notes
+
+### Installing the dev version globally
+
+To use your in-progress version of `test-verifier` as a command in any other project, create a global symlink with npm:
+
+```bash
+npm link        # from the test-verifier project root
+```
+
+This puts a `test-verifier` symlink in your global npm bin directory (see `npm prefix -g`/bin), which is normally on `PATH`. Because it's a symlink to your working tree, edits to `src/cli.ts` and friends are picked up immediately -- no reinstall needed.
+
+Verify the link points at your working tree:
+
+```bash
+which test-verifier   # should resolve to a symlink under `npm prefix -g`/bin
+```
+
+> **Important:** call the binary directly (`test-verifier setup-hooks`), **not** `bunx test-verifier ...`. `bunx` ignores `npm link` and downloads `test-verifier@latest` from the npm registry into a temp dir, so you'd be running the published version, not your local checkout. (Symptom: errors with paths like `/private/var/folders/.../bunx-*-test-verifier@latest/...`.)
+
+To remove the global link later:
+
+```bash
+npm unlink -g test-verifier
+```
+
+> Note: `bun link` (run from this project) followed by `bun link test-verifier` (run in a consumer project) wires the package into that project's `node_modules`, but does **not** add the bin to your shell `PATH`. Use `npm link` if you want the command available globally.
 
 ## License
 

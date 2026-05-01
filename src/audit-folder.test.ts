@@ -38,7 +38,7 @@ describe("ensureAuditDir", () => {
     await ensureAuditDir(tmpRepo);
     await ensureAuditDir(tmpRepo);
     const entries = await readdir(auditDir(tmpRepo));
-    expect(entries.length).toBe(5);
+    expect(entries.length).toBe(7);
   });
 
   test("directories are actual directories", async () => {

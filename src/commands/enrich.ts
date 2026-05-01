@@ -45,7 +45,10 @@ export async function enrich(cwd: string = process.cwd()): Promise<void> {
     process.exit(1);
   }
 
-  const cache = new AnalysisCache(auditDir(cwd));
+  const cache = new AnalysisCache(auditDir(cwd), {
+    maxAgeDays: config.audit.cacheTtlDays,
+    maxEntries: config.audit.cacheMaxEntries,
+  });
   let enrichedCount = 0;
   let errorCount = 0;
 
@@ -121,7 +124,7 @@ async function analyzeWithRetry(
   try {
     return await client.analyze(input);
   } catch (firstError) {
-    if (isMalformedResponseError(firstError)) {
+    if (isMalformedResponseError(firstError) || isTimeoutError(firstError)) {
       return await client.analyze(input);
     }
     throw firstError;
@@ -131,6 +134,11 @@ async function analyzeWithRetry(
 function isMalformedResponseError(e: unknown): boolean {
   if (e instanceof SyntaxError) return true;
   return typeof e === "object" && e !== null && "issues" in e;
+}
+
+function isTimeoutError(e: unknown): boolean {
+  if (e instanceof DOMException && e.name === "TimeoutError") return true;
+  return e instanceof Error && e.message === "The operation timed out.";
 }
 
 async function resolveRelatedProdDiffs(
@@ -152,18 +160,28 @@ async function resolveRelatedProdDiffs(
       cwd,
     );
     if (sameCommitDiff) parts.push(sameCommitDiff);
-  } catch {
-    // Commits may no longer exist after rebase
+  } catch (e) {
+    console.error(`  warn: could not diff ${parentCommit.slice(0, 7)}..${commit.slice(0, 7)} for related prod files: ${e instanceof Error ? e.message : String(e)}`);
   }
 
   if (lookback > 0) {
-    const priorDiff = await getPriorCommitsDiff(
-      commit,
-      prodFiles,
-      lookback,
-      cwd,
-    );
-    if (priorDiff) parts.push(priorDiff);
+    try {
+      const priorDiff = await getPriorCommitsDiff(
+        commit,
+        prodFiles,
+        lookback,
+        cwd,
+      );
+      if (priorDiff) parts.push(priorDiff);
+    } catch (e) {
+      console.error(
+        `  warn: could not get prior lookback diff for ${commit.slice(0, 7)}: ${e instanceof Error ? e.message : String(e)}`,
+      );
+    }
+  }
+
+  if (parts.length === 0) {
+    throw new Error(`Failed to resolve related prod diffs for: ${prodFiles.join(", ")}`);
   }
 
   return parts.join("\n");

@@ -11,7 +11,7 @@ interface AuditVerifyOptions {
   signatures: boolean;
 }
 
-const APPROVER_RE = /^(?:approved|rejected) by (.+)$/m;
+const APPROVER_RE = /^(?:approved|rejected|needs_fix) by (.+)$/m;
 
 function extractApprover(fileContent: string): string | null {
   const decision = parseDecisionSection(fileContent);
@@ -19,7 +19,15 @@ function extractApprover(fileContent: string): string | null {
   return match ? match[1].trim() : null;
 }
 
+const KNOWN_FLAGS = new Set(["--no-pending", "--no-rejected", "--signatures"]);
+
 export function parseFlags(argv: string[]): AuditVerifyOptions {
+  for (const arg of argv) {
+    if (arg.startsWith("--") && !KNOWN_FLAGS.has(arg)) {
+      console.error(`Unknown option: ${arg}`);
+      process.exit(1);
+    }
+  }
   return {
     noPending: argv.includes("--no-pending"),
     noRejected: argv.includes("--no-rejected"),
@@ -50,6 +58,17 @@ export async function auditVerify(options: AuditVerifyOptions): Promise<void> {
         console.error(`  ${f}`);
       }
       failures += rejected.length;
+    }
+  }
+
+  if (options.noPending) {
+    const needsFix = await listByStatus(repoRoot, "needs_fix");
+    if (needsFix.length > 0) {
+      console.error(`FAIL: ${needsFix.length} needs_fix file(s) exist`);
+      for (const f of needsFix) {
+        console.error(`  ${f}`);
+      }
+      failures += needsFix.length;
     }
   }
 

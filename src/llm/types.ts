@@ -18,6 +18,7 @@ export interface LlmPromptInput {
 
 export interface LlmClient {
   analyze(input: LlmPromptInput): Promise<LlmResponse>;
+  chat(prompt: string): Promise<string>;
 }
 
 export interface LlmConfig {

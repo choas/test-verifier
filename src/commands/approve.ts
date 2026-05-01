@@ -1,20 +1,9 @@
-import { readFile, writeFile } from "node:fs/promises";
-import { join } from "node:path";
-import { $ } from "bun";
-import { statusDir, moveToApproved, listByStatus } from "../audit-folder";
-import { getOriginUrl, getRepoId, loadPrivateKey } from "../crypto/keys";
+import { writeFile } from "node:fs/promises";
+import { moveToApproved, auditDir } from "../audit-folder";
 import { signFile } from "../crypto/sign-verify";
-
-async function getGitEmail(cwd: string): Promise<string> {
-  const result = await $`git config user.email`.cwd(cwd).quiet().nothrow();
-  const email = result.stdout.toString().trim();
-  if (result.exitCode !== 0 || !email) {
-    throw new Error(
-      "git user.email is not configured. Run: git config user.email you@example.com",
-    );
-  }
-  return email;
-}
+import { parseMarkdown } from "../markdown-reader";
+import { VerificationStore } from "../db/verification-store";
+import { loadSigningContext, findPendingFile } from "./shared";
 
 export async function approve(cwd: string = process.cwd()): Promise<void> {
   const findingId = Bun.argv[3];
@@ -30,36 +19,22 @@ export async function approve(cwd: string = process.cwd()): Promise<void> {
   }
   const rationale = Bun.argv[rationaleIdx + 1];
 
-  const pending = await listByStatus(cwd, "pending");
-  const filename = pending.find(
-    (f) => f === `${findingId}.md` || f.replace(/\.md$/, "") === findingId,
-  );
-  if (!filename) {
-    console.error(`No pending finding with id '${findingId}'.`);
-    console.error(`Pending files: ${pending.length === 0 ? "(none)" : pending.join(", ")}`);
-    process.exit(1);
+  const { filename, filePath, content } = await findPendingFile(cwd, findingId);
+  const { stub } = parseMarkdown(content);
+  const { email, privateKey } = await loadSigningContext(cwd);
+
+  const updated = signFile(privateKey, content, "approved", email, rationale);
+
+  const store = new VerificationStore(auditDir(cwd));
+  try {
+    store.updateStatus(stub.id, "approved", email, rationale);
+  } finally {
+    store.close();
   }
 
-  const filePath = join(statusDir(cwd, "pending"), filename);
-  const content = await readFile(filePath, "utf-8");
-
-  const email = await getGitEmail(cwd);
-  const originUrl = await getOriginUrl(cwd);
-  const repoId = getRepoId(originUrl);
-  const privateKey = await loadPrivateKey(repoId);
-  if (!privateKey) {
-    console.error(
-      `No private key found for this repo (repo-id: ${repoId}). Run 'bunx test-verifier init' first.`,
-    );
-    process.exit(1);
-  }
-
-  const signed = signFile(privateKey, content, email, rationale);
-  const updated = signed.replace(/^status: pending$/m, "status: approved");
-
-  await writeFile(filePath, updated);
   const dest = await moveToApproved(cwd, filename);
+  await writeFile(dest, updated);
 
-  console.log(`Approved: ${findingId}`);
+  console.log(`Approved: ${stub.id}`);
   console.log(`  Moved to: ${dest}`);
 }

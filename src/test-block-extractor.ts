@@ -27,12 +27,6 @@ export function extractTestBlocks(source: string, filePath = "virtual.test.ts"):
   return extractFromNode(sourceFile);
 }
 
-export function extractTestBlocksFromFile(filePath: string): TestBlock[] {
-  const project = new Project({ compilerOptions: { allowJs: true } });
-  const sourceFile = project.addSourceFileAtPath(filePath);
-  return extractFromNode(sourceFile);
-}
-
 export function extractTestBlocksPair(
   beforeSource: string,
   afterSource: string,
@@ -98,15 +92,29 @@ function resolveCallInfo(call: CallExpression): CallInfo {
   }
 
   if (expr.isKind(SyntaxKind.CallExpression)) {
-    // e.g. it.skipIf(condition)(...) or describe.skipIf(...)()
     const innerExpr = expr.getExpression();
     if (innerExpr.isKind(SyntaxKind.PropertyAccessExpression)) {
       const prop = innerExpr.getName();
       const obj = innerExpr.getExpression();
-      if (obj.isKind(SyntaxKind.Identifier) && prop === "skipIf") {
+
+      // e.g. it.each([...])(...), it.skipIf(condition)(...), describe.each(...)()
+      if (obj.isKind(SyntaxKind.Identifier) && TEST_CALL_NAMES.has(obj.getText())) {
         info.name = obj.getText();
-        info.skipIf = true;
+        if (prop === "skipIf") info.skipIf = true;
         return info;
+      }
+
+      // e.g. it.skip.each([...])(...), describe.concurrent.each(...)()
+      if (obj.isKind(SyntaxKind.PropertyAccessExpression)) {
+        const innerProp = obj.getName();
+        const innerObj = obj.getExpression();
+        if (innerObj.isKind(SyntaxKind.Identifier) && TEST_CALL_NAMES.has(innerObj.getText())) {
+          info.name = innerObj.getText();
+          if (innerProp === "skip" || prop === "skip") info.skip = true;
+          if (innerProp === "todo" || prop === "todo") info.todo = true;
+          if (innerProp === "skipIf") info.skipIf = true;
+          return info;
+        }
       }
     }
   }
@@ -148,7 +156,8 @@ function parseTestCall(call: CallExpression): TestBlock | null {
     if (todo && args.length >= 1) {
       const nameArg = args[0];
       const testName = extractStringLiteral(nameArg);
-      const stmt = call.getParent()!;
+      const stmt = call.getParent();
+      if (!stmt) return null;
       return {
         type: name as TestBlock["type"],
         name: testName,
@@ -168,7 +177,8 @@ function parseTestCall(call: CallExpression): TestBlock | null {
   const nameArg = args[0];
   const bodyArg = args[1];
   const testName = extractStringLiteral(nameArg);
-  const stmt = call.getParent()!;
+  const stmt = call.getParent();
+  if (!stmt) return null;
 
   const type = name as TestBlock["type"];
   const assertions = type === "describe" ? [] : collectAssertions(bodyArg);

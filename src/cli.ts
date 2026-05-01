@@ -10,14 +10,30 @@ Usage: test-verifier <command> [options]
 
 Commands:
   init                Initialize test-verifier for this repository
-  check               Analyze test changes and generate findings
+  check [--staged|--uncommitted]
+                      Analyze test changes and generate findings
+                        --staged       Check staged (index) changes vs HEAD
+                        --uncommitted  Check all uncommitted changes vs HEAD
+  list [--status <s>] [--all]
+                      List findings (default: unresolved only)
+                        --status <s>   Filter by status (pending|needs_fix|rejected|approved|resolved)
+                        --all          Show all findings including resolved
   enrich              Enrich pending findings with LLM analysis
   review              Interactively review pending findings
   approve <id>        Approve a pending finding
   reject <id>         Reject a pending finding
+  needs-fix <id>      Mark a finding as needing a fix (blocks push)
+                        --all  Mark all pending findings as needs-fix
+  history <file>      Show verification history for a test file
+                        --function <name>  Filter by test function name
+  commit              Commit .test-verifier/ changes with a descriptive message
+  sync                Rebuild local database from .test-verifier/ markdown files
   audit verify        Verify audit trail integrity
   audit compact       Compact old approved findings into archives
-  setup-hooks         Install Husky git hooks (pre-commit, pre-push)
+  setup-hooks         Install git hooks (pre-commit, pre-push)
+  test-llm [--prompt <text>]
+                      Send a test prompt to the configured LLM
+                        --prompt  Custom prompt text (default: a test-analysis prompt)
 
 Options:
   -h, --help          Show help
@@ -34,6 +50,8 @@ Subcommands:
 
 const APPROVE_USAGE = `Usage: test-verifier approve <finding-id> --rationale <text>`;
 const REJECT_USAGE = `Usage: test-verifier reject <finding-id> --rationale <text>`;
+const NEEDS_FIX_USAGE = `Usage: test-verifier needs-fix <finding-id> --rationale <text>\n       test-verifier needs-fix --all --rationale <text>`;
+const HISTORY_USAGE = `Usage: test-verifier history <test-file> [--function <name>]`;
 
 const args = Bun.argv.slice(2);
 
@@ -73,7 +91,59 @@ switch (command) {
 
   case "check": {
     const { check } = await import("./commands/check");
-    await check();
+    const checkFlags = parseArgs({
+      args: Bun.argv.slice(3),
+      options: {
+        staged: { type: "boolean", default: false },
+        uncommitted: { type: "boolean", default: false },
+      },
+      allowPositionals: true,
+      strict: true,
+    });
+    if (checkFlags.values.staged && checkFlags.values.uncommitted) {
+      console.error("Error: --staged and --uncommitted are mutually exclusive.");
+      process.exit(1);
+    }
+    const mode = checkFlags.values.staged
+      ? "staged"
+      : checkFlags.values.uncommitted
+        ? "uncommitted"
+        : "committed";
+    await check(process.cwd(), mode);
+    break;
+  }
+
+  case "list": {
+    const { list } = await import("./commands/list");
+    const { StubStatusSchema } = await import("./types");
+    const listFlags = parseArgs({
+      args: Bun.argv.slice(3),
+      options: {
+        status: { type: "string" },
+        all: { type: "boolean", default: false },
+      },
+      allowPositionals: true,
+      strict: true,
+    });
+    const statusVal = listFlags.values.status;
+    let validatedStatus: import("./types").StubStatus | undefined;
+    if (statusVal !== undefined) {
+      const parsed = StubStatusSchema.safeParse(statusVal);
+      if (!parsed.success) {
+        console.error(`Invalid status: ${statusVal}`);
+        console.error("Valid statuses: pending, approved, rejected, needs_fix, resolved");
+        process.exit(1);
+      }
+      validatedStatus = parsed.data;
+    }
+    if (validatedStatus && listFlags.values.all) {
+      console.error("Error: --status and --all are mutually exclusive.");
+      process.exit(1);
+    }
+    await list({
+      status: validatedStatus,
+      all: listFlags.values.all ?? false,
+    });
     break;
   }
 
@@ -111,9 +181,58 @@ switch (command) {
     break;
   }
 
+  case "needs-fix": {
+    const findingId = positionals[1];
+    const hasAllFlag = args.includes("--all");
+    if (!findingId && !hasAllFlag) {
+      console.error(NEEDS_FIX_USAGE);
+      process.exit(1);
+    }
+    const { needsFix } = await import("./commands/needs-fix");
+    await needsFix();
+    break;
+  }
+
+  case "history": {
+    const testFile = positionals[1];
+    if (!testFile) {
+      console.error(HISTORY_USAGE);
+      process.exit(1);
+    }
+    const { history } = await import("./commands/history");
+    await history();
+    break;
+  }
+
+  case "commit": {
+    const { commit } = await import("./commands/commit");
+    await commit();
+    break;
+  }
+
+  case "sync": {
+    const { sync } = await import("./commands/sync");
+    await sync();
+    break;
+  }
+
   case "setup-hooks": {
     const { setupHooks } = await import("./commands/setup-hooks");
     await setupHooks();
+    break;
+  }
+
+  case "test-llm": {
+    const { testLlm } = await import("./commands/test-llm");
+    const testLlmFlags = parseArgs({
+      args: Bun.argv.slice(3),
+      options: {
+        prompt: { type: "string" },
+      },
+      allowPositionals: true,
+      strict: true,
+    });
+    await testLlm(process.cwd(), testLlmFlags.values.prompt as string | undefined);
     break;
   }
 

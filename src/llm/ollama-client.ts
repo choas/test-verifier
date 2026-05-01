@@ -1,3 +1,4 @@
+import { z } from "zod";
 import {
   LlmResponseSchema,
   type LlmClient,
@@ -6,6 +7,12 @@ import {
   type LlmResponse,
 } from "./types";
 import { buildSystemPrompt, buildUserPrompt } from "./prompt-builder";
+
+const OllamaChatResponseSchema = z.object({
+  message: z.object({
+    content: z.string(),
+  }),
+});
 
 function parseResponse(raw: string): LlmResponse {
   const trimmed = raw.trim().replace(/^```json?\n?/, "").replace(/\n?```$/, "");
@@ -20,7 +27,7 @@ export class OllamaClient implements LlmClient {
     this.config = {
       provider: "ollama",
       baseUrl: config.baseUrl ?? "http://localhost:11434",
-      timeoutMs: config.timeoutMs ?? 120_000,
+      timeoutMs: config.timeoutMs ?? 300_000,
       model: config.model,
     };
   }
@@ -55,14 +62,14 @@ export class OllamaClient implements LlmClient {
         );
       }
 
-      const json = (await response.json()) as { message?: { content?: string } };
-      const content = json.message?.content;
-      if (!content) {
+      const json: unknown = await response.json();
+      const chatResult = OllamaChatResponseSchema.safeParse(json);
+      if (!chatResult.success) {
         throw new Error("Ollama returned empty response");
       }
 
       try {
-        return parseResponse(content);
+        return parseResponse(chatResult.data.message.content);
       } catch (e) {
         lastError = e;
       }
@@ -71,5 +78,34 @@ export class OllamaClient implements LlmClient {
     throw new Error(
       `Failed to parse LLM response after retry: ${lastError instanceof Error ? lastError.message : String(lastError)}`,
     );
+  }
+
+  async chat(prompt: string): Promise<string> {
+    const body = {
+      model: this.config.model,
+      stream: false,
+      messages: [{ role: "user", content: prompt }],
+    };
+
+    const response = await fetch(`${this.config.baseUrl}/api/chat`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(this.config.timeoutMs),
+    });
+
+    if (!response.ok) {
+      throw new Error(
+        `Ollama request failed: ${response.status} ${response.statusText}`,
+      );
+    }
+
+    const json: unknown = await response.json();
+    const chatResult = OllamaChatResponseSchema.safeParse(json);
+    if (!chatResult.success) {
+      throw new Error("Ollama returned empty response");
+    }
+
+    return chatResult.data.message.content;
   }
 }

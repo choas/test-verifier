@@ -1,3 +1,5 @@
+import { assertSafeRelativePath } from "./path-guard";
+
 export type DiffLineType = "added" | "removed" | "context";
 
 export interface DiffLine {
@@ -22,6 +24,7 @@ export interface FileDiff {
   hunks: DiffHunk[];
 }
 
+const DIFF_HEADER_QUOTED_RE = /^diff --git "a\/(.+)" "b\/(.+)"$/;
 const DIFF_HEADER_RE = /^diff --git a\/(.+) b\/(.+)$/;
 const HUNK_HEADER_RE = /^@@\s+-(\d+)(?:,(\d+))?\s+\+(\d+)(?:,(\d+))?\s+@@(.*)$/;
 
@@ -38,9 +41,13 @@ export function parseDiff(diffStr: string): FileDiff[] {
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
 
-    const diffMatch = line.match(DIFF_HEADER_RE);
+    const diffMatch = line.match(DIFF_HEADER_QUOTED_RE) ?? line.match(DIFF_HEADER_RE);
     if (diffMatch) {
-      currentFile = { oldPath: diffMatch[1], newPath: diffMatch[2], hunks: [] };
+      const oldPath = diffMatch[1];
+      const newPath = diffMatch[2];
+      assertSafeRelativePath(oldPath);
+      assertSafeRelativePath(newPath);
+      currentFile = { oldPath, newPath, hunks: [] };
       files.push(currentFile);
       currentHunk = null;
       continue;

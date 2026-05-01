@@ -1,4 +1,16 @@
 import { $ } from "bun";
+import { assertSafeRelativePath } from "./path-guard";
+
+export async function getGitEmail(cwd: string): Promise<string> {
+  const result = await $`git config user.email`.cwd(cwd).quiet().nothrow();
+  const email = result.stdout.toString().trim();
+  if (result.exitCode !== 0 || !email) {
+    throw new Error(
+      "git user.email is not configured. Run: git config user.email you@example.com",
+    );
+  }
+  return email;
+}
 
 export async function getCurrentCommitSha(cwd?: string): Promise<string> {
   const result = await $`git rev-parse HEAD`.cwd(cwd ?? ".").quiet();
@@ -68,9 +80,42 @@ export async function getDiffBetweenCommits(
   return result.stdout.toString().trim();
 }
 
+export async function getStagedDiff(
+  globs: string[],
+  cwd?: string,
+): Promise<string> {
+  const dir = cwd ?? ".";
+  const args = globs.length > 0 ? ["--", ...globs] : [];
+  const result = await $`git diff --cached HEAD ${args}`.cwd(dir).quiet().nothrow();
+  if (result.exitCode !== 0) return "";
+  return result.stdout.toString().trim();
+}
+
+export async function getUncommittedDiff(
+  globs: string[],
+  cwd?: string,
+): Promise<string> {
+  const dir = cwd ?? ".";
+  const args = globs.length > 0 ? ["--", ...globs] : [];
+  const result = await $`git diff HEAD ${args}`.cwd(dir).quiet().nothrow();
+  if (result.exitCode !== 0) return "";
+  return result.stdout.toString().trim();
+}
+
+export async function getFileFromIndex(
+  filePath: string,
+  cwd?: string,
+): Promise<string> {
+  assertSafeRelativePath(filePath);
+  const dir = cwd ?? ".";
+  const result = await $`git show :${filePath}`.cwd(dir).quiet().nothrow();
+  if (result.exitCode !== 0) return "";
+  return result.stdout.toString();
+}
+
 function isTestFile(filePath: string): boolean {
   const p = filePath.replace(/\\/g, "/");
-  if (/\.(test|spec)\.[tj]sx?$/.test(p)) return true;
+  if (/\.(test|spec)\.(ts|tsx|js|jsx|mts|mjs|svelte\.ts)$/.test(p)) return true;
   if (/\/__tests__\//.test(p)) return true;
   if (/\/tests?\//.test(p) && /\.[tj]sx?$/.test(p)) return true;
   return false;
