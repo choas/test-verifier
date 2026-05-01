@@ -12,10 +12,10 @@ export async function getGitEmail(cwd: string): Promise<string> {
   return email;
 }
 
-export async function getCurrentCommitSha(cwd?: string): Promise<string> {
-  const result = await $`git rev-parse HEAD`.cwd(cwd ?? ".").quiet();
+export async function getCurrentCommitSha(cwd?: string): Promise<string | null> {
+  const result = await $`git rev-parse HEAD`.cwd(cwd ?? ".").quiet().nothrow();
   if (result.exitCode !== 0) {
-    throw new Error(`git rev-parse HEAD failed: ${result.stderr.toString()}`);
+    return null;
   }
   return result.stdout.toString().trim();
 }

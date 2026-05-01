@@ -122,6 +122,10 @@ export async function check(
     }
 
     const toSha = await getCurrentCommitSha(cwd);
+    if (!toSha) {
+      console.error("test-verifier: no commits found in the repository.");
+      process.exit(1);
+    }
     if (storedHead === toSha) {
       console.log("test-verifier: no new commits to check.");
       return;
@@ -131,7 +135,12 @@ export async function check(
     toLabel = toSha;
     rawDiff = await getDiffBetweenCommits(fromSha, toSha, diffGlobs, cwd);
   } else {
-    fromSha = await getCurrentCommitSha(cwd);
+    const currentSha = await getCurrentCommitSha(cwd);
+    if (!currentSha) {
+      console.error("test-verifier: no commits found in the repository.");
+      process.exit(1);
+    }
+    fromSha = currentSha;
     toLabel = mode === "staged" ? "STAGED" : "UNCOMMITTED";
     rawDiff =
       mode === "staged"
