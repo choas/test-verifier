@@ -53,6 +53,51 @@ const REJECT_USAGE = `Usage: test-verifier reject <finding-id> --rationale <text
 const NEEDS_FIX_USAGE = `Usage: test-verifier needs-fix <finding-id> --rationale <text>\n       test-verifier needs-fix --all --rationale <text>`;
 const HISTORY_USAGE = `Usage: test-verifier history <test-file> [--function <name>]`;
 
+function levenshtein(a: string, b: string): number {
+  const m = a.length, n = b.length;
+  const dp: number[][] = Array.from({ length: m + 1 }, () => Array(n + 1).fill(0));
+  for (let i = 0; i <= m; i++) dp[i][0] = i;
+  for (let j = 0; j <= n; j++) dp[0][j] = j;
+  for (let i = 1; i <= m; i++)
+    for (let j = 1; j <= n; j++)
+      dp[i][j] = Math.min(
+        dp[i - 1][j] + 1,
+        dp[i][j - 1] + 1,
+        dp[i - 1][j - 1] + (a[i - 1] !== b[j - 1] ? 1 : 0),
+      );
+  return dp[m][n];
+}
+
+function suggestOption(unknown: string, known: string[]): string | undefined {
+  let best: string | undefined;
+  let bestDist = Infinity;
+  for (const opt of known) {
+    const d = levenshtein(unknown, opt);
+    if (d < bestDist && d <= 3) {
+      bestDist = d;
+      best = opt;
+    }
+  }
+  return best;
+}
+
+function handleParseError(e: unknown, knownOptions: string[]): never {
+  if (e instanceof TypeError) {
+    const match = e.message.match(/Unknown option '(--.+?)'/);
+    if (match) {
+      console.error(`Error: Unknown option '${match[1]}'`);
+      const suggestion = suggestOption(match[1], knownOptions);
+      if (suggestion) {
+        console.error(`Did you mean '${suggestion}'?`);
+      }
+    } else {
+      console.error(`Error: ${e.message}`);
+    }
+    process.exit(1);
+  }
+  throw e;
+}
+
 const args = Bun.argv.slice(2);
 
 const { values: globalFlags, positionals } = parseArgs({
@@ -64,6 +109,19 @@ const { values: globalFlags, positionals } = parseArgs({
   allowPositionals: true,
   strict: false,
 });
+
+const cmdIndex = args.findIndex((a) => !a.startsWith("-"));
+const preCommandArgs = args.slice(0, cmdIndex === -1 ? args.length : cmdIndex);
+for (const arg of preCommandArgs) {
+  if (arg.startsWith("--") && arg.slice(2) !== "help" && arg.slice(2) !== "version") {
+    console.error(`Error: Unknown option '${arg}'`);
+    process.exit(1);
+  }
+  if (arg.startsWith("-") && !arg.startsWith("--") && arg !== "-h" && arg !== "-v") {
+    console.error(`Error: Unknown option '${arg}'`);
+    process.exit(1);
+  }
+}
 
 if (globalFlags.version) {
   console.log(VERSION);
@@ -91,15 +149,20 @@ switch (command) {
 
   case "check": {
     const { check } = await import("./commands/check");
-    const checkFlags = parseArgs({
-      args: Bun.argv.slice(3),
-      options: {
-        staged: { type: "boolean", default: false },
-        uncommitted: { type: "boolean", default: false },
-      },
-      allowPositionals: true,
-      strict: true,
-    });
+    let checkFlags;
+    try {
+      checkFlags = parseArgs({
+        args: Bun.argv.slice(3),
+        options: {
+          staged: { type: "boolean", default: false },
+          uncommitted: { type: "boolean", default: false },
+        },
+        allowPositionals: true,
+        strict: true,
+      });
+    } catch (e) {
+      handleParseError(e, ["--staged", "--uncommitted"]);
+    }
     if (checkFlags.values.staged && checkFlags.values.uncommitted) {
       console.error("Error: --staged and --uncommitted are mutually exclusive.");
       process.exit(1);
@@ -116,15 +179,20 @@ switch (command) {
   case "list": {
     const { list } = await import("./commands/list");
     const { StubStatusSchema } = await import("./types");
-    const listFlags = parseArgs({
-      args: Bun.argv.slice(3),
-      options: {
-        status: { type: "string" },
-        all: { type: "boolean", default: false },
-      },
-      allowPositionals: true,
-      strict: true,
-    });
+    let listFlags;
+    try {
+      listFlags = parseArgs({
+        args: Bun.argv.slice(3),
+        options: {
+          status: { type: "string" },
+          all: { type: "boolean", default: false },
+        },
+        allowPositionals: true,
+        strict: true,
+      });
+    } catch (e) {
+      handleParseError(e, ["--status", "--all"]);
+    }
     const statusVal = listFlags.values.status;
     let validatedStatus: import("./types").StubStatus | undefined;
     if (statusVal !== undefined) {
@@ -224,14 +292,19 @@ switch (command) {
 
   case "test-llm": {
     const { testLlm } = await import("./commands/test-llm");
-    const testLlmFlags = parseArgs({
-      args: Bun.argv.slice(3),
-      options: {
-        prompt: { type: "string" },
-      },
-      allowPositionals: true,
-      strict: true,
-    });
+    let testLlmFlags;
+    try {
+      testLlmFlags = parseArgs({
+        args: Bun.argv.slice(3),
+        options: {
+          prompt: { type: "string" },
+        },
+        allowPositionals: true,
+        strict: true,
+      });
+    } catch (e) {
+      handleParseError(e, ["--prompt"]);
+    }
     await testLlm(process.cwd(), testLlmFlags.values.prompt as string | undefined);
     break;
   }
