@@ -1,3 +1,5 @@
+import { assertSafeRelativePath } from "./path-guard";
+
 export type DiffLineType = "added" | "removed" | "context";
 
 export interface DiffLine {
@@ -21,9 +23,6 @@ export interface FileDiff {
   newPath: string;
   hunks: DiffHunk[];
 }
-import { assertSafeRelativePath } from "./path-guard";
-
-export type DiffLineType = "added" | "removed" | "context";
 
 const DIFF_HEADER_QUOTED_RE = /^diff --git "a\/(.+)" "b\/(.+)"$/;
 const DIFF_HEADER_RE = /^diff --git a\/(.+) b\/(.+)$/;
