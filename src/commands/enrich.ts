@@ -165,13 +165,19 @@ async function resolveRelatedProdDiffs(
   }
 
   if (lookback > 0) {
-    const priorDiff = await getPriorCommitsDiff(
-      commit,
-      prodFiles,
-      lookback,
-      cwd,
-    );
-    if (priorDiff) parts.push(priorDiff);
+    try {
+      const priorDiff = await getPriorCommitsDiff(
+        commit,
+        prodFiles,
+        lookback,
+        cwd,
+      );
+      if (priorDiff) parts.push(priorDiff);
+    } catch (e) {
+      console.error(
+        `  warn: could not get prior lookback diff for ${commit.slice(0, 7)}: ${e instanceof Error ? e.message : String(e)}`,
+      );
+    }
   }
 
   return parts.join("\n");

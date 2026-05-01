@@ -32,7 +32,14 @@ async function markOneNeedsFix(
 
 export async function needsFix(cwd: string = process.cwd()): Promise<void> {
   const allFlag = Bun.argv.includes("--all");
-  const findingId = allFlag ? null : Bun.argv[3];
+  const findingId = Bun.argv.slice(3).find((arg) => !arg.startsWith("-"));
+
+  if (allFlag && findingId) {
+    console.error(
+      "Error: Cannot use --all and a specific finding ID simultaneously.",
+    );
+    process.exit(1);
+  }
 
   if (!allFlag && !findingId) {
     console.error("Usage: test-verifier needs-fix <finding-id> --rationale <text>");

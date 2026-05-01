@@ -20,7 +20,7 @@ export async function approve(cwd: string = process.cwd()): Promise<void> {
   const rationale = Bun.argv[rationaleIdx + 1];
 
   const { filename, filePath, content } = await findPendingFile(cwd, findingId);
-  parseMarkdown(content);
+  const { stub } = parseMarkdown(content);
   const { email, privateKey } = await loadSigningContext(cwd);
 
   const updated = signFile(privateKey, content, "approved", email, rationale);
@@ -30,11 +30,11 @@ export async function approve(cwd: string = process.cwd()): Promise<void> {
 
   const store = new VerificationStore(auditDir(cwd));
   try {
-    store.updateStatus(findingId, "approved", email, rationale);
+    store.updateStatus(stub.id, "approved", email, rationale);
   } finally {
     store.close();
   }
 
-  console.log(`Approved: ${findingId}`);
+  console.log(`Approved: ${stub.id}`);
   console.log(`  Moved to: ${dest}`);
 }
