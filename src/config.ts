@@ -96,22 +96,20 @@ export function defineConfig(input: TestVerifierInput = {}): TestVerifierConfig 
   return configSchema.parse(input);
 }
 
-const CONFIG_FILENAMES = [
-  "test-verifier.config.ts",
-  "test-verifier.config.js",
-];
+const CONFIG_PATH = ".test-verifier/config.json";
+
+export function configPath(cwd: string): string {
+  return `${cwd}/${CONFIG_PATH}`;
+}
 
 export async function loadConfig(
   cwd: string = process.cwd(),
 ): Promise<TestVerifierConfig> {
-  for (const filename of CONFIG_FILENAMES) {
-    const filepath = `${cwd}/${filename}`;
-    const file = Bun.file(filepath);
-    if (await file.exists()) {
-      const mod = await import(filepath);
-      const raw = mod.default ?? mod;
-      return configSchema.parse(raw);
-    }
+  const filepath = configPath(cwd);
+  const file = Bun.file(filepath);
+  if (await file.exists()) {
+    const raw = await file.json();
+    return configSchema.parse(raw);
   }
   return configSchema.parse({});
 }
