@@ -188,8 +188,8 @@ describe("generateStubMarkdown", () => {
       "src/lib/auth/types.ts",
     ]);
     expect(content).toContain("prod_files_related:");
-    expect(content).toContain("  - src/lib/auth/validate.ts");
-    expect(content).toContain("  - src/lib/auth/types.ts");
+    expect(content).toContain('  - "src/lib/auth/validate.ts"');
+    expect(content).toContain('  - "src/lib/auth/types.ts"');
   });
 
   it("renders empty prod_files_related as empty array", () => {
@@ -217,7 +217,7 @@ describe("generateStubMarkdown", () => {
     expect(content).toContain("severity: CRITICAL");
     expect(content).toContain("status: pending");
     expect(content).toContain("llm_enriched: false");
-    expect(content).toContain("test_file: src/lib/auth/validate.test.ts");
+    expect(content).toContain('test_file: "src/lib/auth/validate.test.ts"');
   });
 
   it("renders title with test file path", () => {

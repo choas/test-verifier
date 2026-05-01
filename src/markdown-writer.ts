@@ -96,11 +96,11 @@ function renderMarkdown(stub: StubFile, findings: Finding[], rawDiff: string): s
   lines.push(`severity: ${stub.severity}`);
   lines.push(`status: ${stub.status}`);
   lines.push(`llm_enriched: ${stub.llm_enriched}`);
-  lines.push(`test_file: ${stub.test_file}`);
+  lines.push(`test_file: ${JSON.stringify(stub.test_file)}`);
   if (stub.test_functions.length > 0) {
     lines.push("test_functions:");
     for (const f of stub.test_functions) {
-      lines.push(`  - ${f}`);
+      lines.push(`  - ${JSON.stringify(f)}`);
     }
   } else {
     lines.push("test_functions: []");
@@ -111,7 +111,7 @@ function renderMarkdown(stub: StubFile, findings: Finding[], rawDiff: string): s
   if (stub.prod_files_related.length > 0) {
     lines.push("prod_files_related:");
     for (const f of stub.prod_files_related) {
-      lines.push(`  - ${f}`);
+      lines.push(`  - ${JSON.stringify(f)}`);
     }
   } else {
     lines.push("prod_files_related: []");

@@ -184,7 +184,7 @@ export class VerificationStore {
            WHERE test_file = ? AND test_functions LIKE ? ESCAPE '\\'
            ORDER BY created_at DESC`,
         )
-        .all(testFile, `%"${escapeLike(testFunction)}"%`),
+        .all(testFile, `%${escapeLike(JSON.stringify(testFunction))}%`),
     );
     return rows.map((r) => this.toRecord(r));
   }
@@ -222,7 +222,7 @@ export class VerificationStore {
            WHERE test_file = ? AND status = 'needs_fix' AND test_functions LIKE ? ESCAPE '\\'
            ORDER BY created_at DESC`,
         )
-        .all(testFile, `%"${escapeLike(testFunction)}"%`),
+        .all(testFile, `%${escapeLike(JSON.stringify(testFunction))}%`),
     );
     return rows.map((r) => this.toRecord(r));
   }

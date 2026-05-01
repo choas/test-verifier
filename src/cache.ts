@@ -12,6 +12,8 @@ const CacheRowSchema = z.object({ response: z.string() });
 
 export class AnalysisCache {
   private db: Database;
+  private maxAgeDays: number;
+  private maxEntries: number;
 
   constructor(
     auditDir: string,
@@ -27,27 +29,26 @@ export class AnalysisCache {
         created_at TEXT NOT NULL
       )`,
     );
-    this.prune(
-      opts?.maxAgeDays ?? DEFAULT_MAX_AGE_DAYS,
-      opts?.maxEntries ?? DEFAULT_MAX_ENTRIES,
-    );
+    this.maxAgeDays = opts?.maxAgeDays ?? DEFAULT_MAX_AGE_DAYS;
+    this.maxEntries = opts?.maxEntries ?? DEFAULT_MAX_ENTRIES;
+    this.prune();
   }
 
-  private prune(maxAgeDays: number, maxEntries: number): void {
+  private prune(): void {
     const cutoff = new Date(
-      Date.now() - maxAgeDays * 24 * 60 * 60 * 1000,
+      Date.now() - this.maxAgeDays * 24 * 60 * 60 * 1000,
     ).toISOString();
     this.db.run("DELETE FROM analysis_cache WHERE created_at < ?", [cutoff]);
 
     const countRow = CountRowSchema.parse(
       this.db.query("SELECT COUNT(*) as cnt FROM analysis_cache").get(),
     );
-    if (countRow.cnt > maxEntries) {
+    if (countRow.cnt > this.maxEntries) {
       this.db.run(
         `DELETE FROM analysis_cache WHERE key NOT IN (
           SELECT key FROM analysis_cache ORDER BY created_at DESC LIMIT ?
         )`,
-        [maxEntries],
+        [this.maxEntries],
       );
     }
   }
@@ -57,7 +58,7 @@ export class AnalysisCache {
     relatedProdDiff: string,
     modelVersion: string,
   ): string {
-    const input = testDiff + relatedProdDiff + modelVersion;
+    const input = JSON.stringify([testDiff, relatedProdDiff, modelVersion]);
     return createHash("sha256").update(input).digest("hex");
   }
 
@@ -75,6 +76,7 @@ export class AnalysisCache {
       "INSERT OR REPLACE INTO analysis_cache (key, response, model, created_at) VALUES (?, ?, ?, ?)",
       [key, JSON.stringify(response), model, new Date().toISOString()],
     );
+    this.prune();
   }
 
   close(): void {
