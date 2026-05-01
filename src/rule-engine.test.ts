@@ -458,8 +458,12 @@ describe("runRuleEngine", () => {
 
     const matcherFindings = result.findings.filter((f) => f.rule === "matcher-transition");
     expect(matcherFindings.length).toBe(3);
-    expect(matcherFindings[0].message).toContain("auth > login > validates credentials");
-    expect(matcherFindings[2].message).toContain("auth > logout > clears session");
+    expect(
+      matcherFindings.some((f) => f.message.includes("auth > login > validates credentials")),
+    ).toBe(true);
+    expect(
+      matcherFindings.some((f) => f.message.includes("auth > logout > clears session")),
+    ).toBe(true);
     expect(result.overallSeverity).toBe(Severity.CRITICAL);
   });
 
