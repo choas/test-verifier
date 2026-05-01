@@ -144,7 +144,7 @@ Once hooks are installed, the workflow is automatic:
 
 When a reviewer determines that a test change is wrong and needs to be reverted or corrected, they can mark it as `needs_fix` instead of simply rejecting it. This creates a tracked obligation that blocks push until the issue is resolved.
 
-```
+```text
 1. Developer weakens a test (e.g. removes .toBe assertion)
    └─ pre-commit hook runs `check`, creates a pending finding
 
