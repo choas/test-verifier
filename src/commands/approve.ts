@@ -1,9 +1,9 @@
 import { writeFile } from "node:fs/promises";
-import { moveToApproved, auditDir } from "../audit-folder";
+import { moveToApproved, moveFile, auditDir } from "../audit-folder";
 import { signFile } from "../crypto/sign-verify";
 import { parseMarkdown } from "../markdown-reader";
 import { VerificationStore } from "../db/verification-store";
-import { loadSigningContext, findPendingFile } from "./shared";
+import { loadSigningContext, findFileByStatus } from "./shared";
 
 export async function approve(cwd: string = process.cwd()): Promise<void> {
   const findingId = Bun.argv[3];
@@ -19,7 +19,7 @@ export async function approve(cwd: string = process.cwd()): Promise<void> {
   }
   const rationale = Bun.argv[rationaleIdx + 1];
 
-  const { filename, filePath, content } = await findPendingFile(cwd, findingId);
+  const { filename, content, status } = await findFileByStatus(cwd, findingId, ["pending", "needs_fix"]);
   const { stub } = parseMarkdown(content);
   const { email, privateKey } = await loadSigningContext(cwd);
 
@@ -32,7 +32,9 @@ export async function approve(cwd: string = process.cwd()): Promise<void> {
     store.close();
   }
 
-  const dest = await moveToApproved(cwd, filename);
+  const dest = status === "pending"
+    ? await moveToApproved(cwd, filename)
+    : await moveFile(cwd, filename, "needs_fix", "approved");
   await writeFile(dest, updated);
 
   console.log(`Approved: ${stub.id}`);

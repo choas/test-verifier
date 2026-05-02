@@ -42,3 +42,26 @@ export async function findPendingFile(
   const content = await readFile(filePath, "utf-8");
   return { filename, filePath, content };
 }
+
+export type FindableStatus = "pending" | "needs_fix";
+
+export async function findFileByStatus(
+  cwd: string,
+  findingId: string,
+  statuses: FindableStatus[],
+): Promise<{ filename: string; filePath: string; content: string; status: FindableStatus }> {
+  for (const status of statuses) {
+    const files = await listByStatus(cwd, status);
+    const filename = files.find(
+      (f) => f === `${findingId}.md` || f.replace(/\.md$/, "") === findingId,
+    );
+    if (filename) {
+      const filePath = join(statusDir(cwd, status), filename);
+      const content = await readFile(filePath, "utf-8");
+      return { filename, filePath, content, status };
+    }
+  }
+  const allStatuses = statuses.join(", ");
+  console.error(`No finding with id '${findingId}' in ${allStatuses}.`);
+  process.exit(1);
+}

@@ -82,7 +82,7 @@ export async function moveToResolved(repoRoot: string, filename: string, from: S
   return moveFile(repoRoot, filename, from, "resolved");
 }
 
-async function moveFile(
+export async function moveFile(
   repoRoot: string,
   filename: string,
   from: StubStatus,
