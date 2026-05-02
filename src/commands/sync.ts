@@ -58,7 +58,7 @@ export async function sync(cwd: string = process.cwd()): Promise<void> {
             id: parsed.stub.id,
             testFile: parsed.stub.test_file,
             testFunctions: parsed.stub.test_functions,
-            rule: deriveRule(parsed.findings),
+            rule: combineSeverities(parsed.findings),
             severity: parsed.stub.severity,
             status: status,
             commit: parsed.stub.commit,
