@@ -12,7 +12,10 @@ export function detectTautologies(
   filePath = "virtual.test.ts",
   config: TautologyConfig = DEFAULT_CONFIG,
 ): Finding[] {
-  const project = new Project({ useInMemoryFileSystem: true, compilerOptions: { allowJs: true } });
+  const project = new Project({
+    useInMemoryFileSystem: true,
+    compilerOptions: { allowJs: true },
+  });
   const sourceFile = project.createSourceFile(filePath, source);
   const findings: Finding[] = [];
 
@@ -203,14 +206,16 @@ function checkNoAssertions(block: TestBlockInfo, severity: Severity): Finding[] 
 
   if (hasAssertion) return [];
 
-  return [{
-    rule: "tautology/no-assertions",
-    severity,
-    line: block.startLine,
-    message: `Test "${block.name}" has no assertion calls`,
-    before: "",
-    after: "",
-  }];
+  return [
+    {
+      rule: "tautology/no-assertions",
+      severity,
+      line: block.startLine,
+      message: `Test "${block.name}" has no assertion calls`,
+      before: "",
+      after: "",
+    },
+  ];
 }
 
 function checkTruthyMocks(sourceFile: SourceFile, severity: Severity): Finding[] {
@@ -341,7 +346,7 @@ function findMockChainRoot(node: Node): string | null {
 
 function hasNonTrivialSignature(sourceFile: SourceFile, mockName: string): boolean {
   const baseName = mockName.replace(/^mock/, "").replace(/^Mock/, "");
-  const fnName = baseName.charAt(0).toLowerCase() + baseName.slice(1);
+  const _fnName = `${baseName.charAt(0).toLowerCase()}${baseName.slice(1)}`;
 
   let foundNonTrivial = false;
 
@@ -354,11 +359,17 @@ function hasNonTrivialSignature(sourceFile: SourceFile, mockName: string): boole
 
       if (expr.isKind(SyntaxKind.PropertyAccessExpression) && expr.getName() === "fn") {
         const fnObj = expr.getExpression();
-        if (fnObj.isKind(SyntaxKind.Identifier) && (fnObj.getText() === "jest" || fnObj.getText() === "vi")) {
+        if (
+          fnObj.isKind(SyntaxKind.Identifier) &&
+          (fnObj.getText() === "jest" || fnObj.getText() === "vi")
+        ) {
           const fnArgs = call.getArguments();
           if (fnArgs.length > 0) {
             const impl = fnArgs[0];
-            if (impl.isKind(SyntaxKind.ArrowFunction) || impl.isKind(SyntaxKind.FunctionExpression)) {
+            if (
+              impl.isKind(SyntaxKind.ArrowFunction) ||
+              impl.isKind(SyntaxKind.FunctionExpression)
+            ) {
               const params = impl.getParameters();
               if (params.length > 0) {
                 foundNonTrivial = true;
@@ -397,7 +408,11 @@ function hasNonTrivialSignature(sourceFile: SourceFile, mockName: string): boole
         const typeNode = node.getTypeNode();
         if (typeNode) {
           const typeText = typeNode.getText();
-          if (typeText.includes("=>") || typeText.includes("Mock") || typeText.includes("SpyInstance")) {
+          if (
+            typeText.includes("=>") ||
+            typeText.includes("Mock") ||
+            typeText.includes("SpyInstance")
+          ) {
             foundNonTrivial = true;
           }
         }

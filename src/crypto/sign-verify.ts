@@ -1,4 +1,9 @@
-import { sign as cryptoSign, verify as cryptoVerify, createPrivateKey, createPublicKey } from "node:crypto";
+import {
+  sign as cryptoSign,
+  verify as cryptoVerify,
+  createPrivateKey,
+  createPublicKey,
+} from "node:crypto";
 
 export interface SignInput {
   diffHash: string;
@@ -61,7 +66,7 @@ export function signFile(
   rationale: string,
 ): string {
   const fm = parseFrontMatter(fileContent);
-  const diffHash = fm["diff_hash"];
+  const diffHash = fm.diff_hash;
   if (!diffHash) throw new Error("No diff_hash in front matter");
 
   const decisionText = `${status} by ${approver}\nrationale: ${rationale}`;
@@ -78,7 +83,7 @@ export function signFile(
 
 export function verifyFile(publicKeyPem: string, fileContent: string): boolean {
   const fm = parseFrontMatter(fileContent);
-  const diffHash = fm["diff_hash"];
+  const diffHash = fm.diff_hash;
   if (!diffHash) throw new Error("No diff_hash in front matter");
 
   const decisionRaw = parseDecisionSection(fileContent);

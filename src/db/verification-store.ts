@@ -142,12 +142,7 @@ export class VerificationStore {
     );
   }
 
-  updateStatus(
-    id: string,
-    status: StubStatus,
-    reviewer?: string,
-    rationale?: string,
-  ): void {
+  updateStatus(id: string, status: StubStatus, reviewer?: string, rationale?: string): void {
     this.db.run(
       `UPDATE verifications
        SET status = ?, updated_at = ?, reviewer = ?, rationale = ?
@@ -157,9 +152,7 @@ export class VerificationStore {
   }
 
   getById(id: string): VerificationRecord | null {
-    const raw = this.db
-      .query("SELECT * FROM verifications WHERE id = ?")
-      .get(id);
+    const raw = this.db.query("SELECT * FROM verifications WHERE id = ?").get(id);
     if (!raw) return null;
     return this.toRecord(parseRow(raw));
   }
@@ -173,10 +166,7 @@ export class VerificationStore {
     return rows.map((r) => this.toRecord(r));
   }
 
-  findByTestFileAndFunction(
-    testFile: string,
-    testFunction: string,
-  ): VerificationRecord[] {
+  findByTestFileAndFunction(testFile: string, testFunction: string): VerificationRecord[] {
     const rows = parseRows(
       this.db
         .query(
@@ -211,10 +201,7 @@ export class VerificationStore {
     return rows.map((r) => this.toRecord(r));
   }
 
-  findNeedsFixForTestFunction(
-    testFile: string,
-    testFunction: string,
-  ): VerificationRecord[] {
+  findNeedsFixForTestFunction(testFile: string, testFunction: string): VerificationRecord[] {
     const rows = parseRows(
       this.db
         .query(
@@ -283,7 +270,7 @@ export class VerificationStore {
     let parsedFunctions: unknown = [];
     try {
       parsedFunctions = JSON.parse(row.test_functions || "[]");
-    } catch (e) {
+    } catch (_e) {
       console.error(`  warn: unparseable test_functions JSON for ${row.id}, defaulting to []`);
     }
 

@@ -1,5 +1,5 @@
 import matter from "gray-matter";
-import { Severity, SeveritySchema, StubStatusSchema, type StubFile } from "./types";
+import { type Severity, SeveritySchema, StubStatusSchema, type StubFile } from "./types";
 
 export interface ParsedFinding {
   severity: Severity;
@@ -79,7 +79,9 @@ function parseFrontMatter(data: Record<string, unknown>): StubFile {
     commit: String(data.commit ?? ""),
     parent_commit: String(data.parent_commit ?? ""),
     diff_hash: String(data.diff_hash ?? ""),
-    parent_verification_id: data.parent_verification_id ? String(data.parent_verification_id) : undefined,
+    parent_verification_id: data.parent_verification_id
+      ? String(data.parent_verification_id)
+      : undefined,
   };
 }
 
@@ -116,13 +118,18 @@ function parseSections(body: string): {
   const result = { findings: "", diff: "", analysis: "", decision: "" };
   const headerRe = /^## (.+)$/gm;
   const headers: { name: string; start: number; end: number }[] = [];
-  let match: RegExpExecArray | null;
+  let match: RegExpExecArray | null = headerRe.exec(body);
 
-  while ((match = headerRe.exec(body)) !== null) {
+  while (match !== null) {
     if (headers.length > 0) {
       headers[headers.length - 1].end = match.index;
     }
-    headers.push({ name: match[1], start: match.index + match[0].length, end: body.length });
+    headers.push({
+      name: match[1],
+      start: match.index + match[0].length,
+      end: body.length,
+    });
+    match = headerRe.exec(body);
   }
 
   for (const h of headers) {

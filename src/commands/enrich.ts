@@ -39,9 +39,7 @@ export async function enrich(cwd: string = process.cwd()): Promise<void> {
   try {
     client = createLlmClient(config);
   } catch (e) {
-    console.error(
-      `test-verifier: ${e instanceof Error ? e.message : String(e)}`,
-    );
+    console.error(`test-verifier: ${e instanceof Error ? e.message : String(e)}`);
     process.exit(1);
   }
 
@@ -66,11 +64,7 @@ export async function enrich(cwd: string = process.cwd()): Promise<void> {
           cwd,
         );
 
-        const cacheKey = AnalysisCache.computeKey(
-          parsed.diff,
-          relatedProdDiff,
-          config.llm.model,
-        );
+        const cacheKey = AnalysisCache.computeKey(parsed.diff, relatedProdDiff, config.llm.model);
         let llmResponse = cache.get(cacheKey);
 
         if (!llmResponse) {
@@ -90,11 +84,7 @@ export async function enrich(cwd: string = process.cwd()): Promise<void> {
           cache.set(cacheKey, llmResponse, config.llm.model);
         }
 
-        const enrichedContent = rewriteWithAnalysis(
-          raw,
-          llmResponse,
-          config.llm.model,
-        );
+        const enrichedContent = rewriteWithAnalysis(raw, llmResponse, config.llm.model);
         await writeFile(join(pendingDir, filename), enrichedContent);
         enrichedCount++;
         console.log(`  enriched ${stub.test_file}`);
@@ -109,18 +99,13 @@ export async function enrich(cwd: string = process.cwd()): Promise<void> {
     cache.close();
   }
 
-  console.log(
-    `test-verifier: ${enrichedCount} file(s) enriched, ${errorCount} error(s).`,
-  );
+  console.log(`test-verifier: ${enrichedCount} file(s) enriched, ${errorCount} error(s).`);
   if (errorCount > 0) {
     process.exit(1);
   }
 }
 
-async function analyzeWithRetry(
-  client: LlmClient,
-  input: LlmPromptInput,
-): Promise<LlmResponse> {
+async function analyzeWithRetry(client: LlmClient, input: LlmPromptInput): Promise<LlmResponse> {
   try {
     return await client.analyze(input);
   } catch (firstError) {
@@ -153,25 +138,17 @@ async function resolveRelatedProdDiffs(
   const parts: string[] = [];
 
   try {
-    const sameCommitDiff = await getDiffBetweenCommits(
-      parentCommit,
-      commit,
-      prodFiles,
-      cwd,
-    );
+    const sameCommitDiff = await getDiffBetweenCommits(parentCommit, commit, prodFiles, cwd);
     if (sameCommitDiff) parts.push(sameCommitDiff);
   } catch (e) {
-    console.error(`  warn: could not diff ${parentCommit.slice(0, 7)}..${commit.slice(0, 7)} for related prod files: ${e instanceof Error ? e.message : String(e)}`);
+    console.error(
+      `  warn: could not diff ${parentCommit.slice(0, 7)}..${commit.slice(0, 7)} for related prod files: ${e instanceof Error ? e.message : String(e)}`,
+    );
   }
 
   if (lookback > 0) {
     try {
-      const priorDiff = await getPriorCommitsDiff(
-        commit,
-        prodFiles,
-        lookback,
-        cwd,
-      );
+      const priorDiff = await getPriorCommitsDiff(commit, prodFiles, lookback, cwd);
       if (priorDiff) parts.push(priorDiff);
     } catch (e) {
       console.error(
@@ -187,18 +164,11 @@ async function resolveRelatedProdDiffs(
   return parts.join("\n");
 }
 
-function rewriteWithAnalysis(
-  raw: string,
-  response: LlmResponse,
-  model: string,
-): string {
+function rewriteWithAnalysis(raw: string, response: LlmResponse, model: string): string {
   let result = raw.replace("llm_enriched: false", "llm_enriched: true");
 
   if (!result.includes("llm_model:")) {
-    result = result.replace(
-      "llm_enriched: true\n",
-      `llm_enriched: true\nllm_model: ${model}\n`,
-    );
+    result = result.replace("llm_enriched: true\n", `llm_enriched: true\nllm_model: ${model}\n`);
   }
 
   const analysisHeader = "## Analysis\n\n";
@@ -214,7 +184,7 @@ function rewriteWithAnalysis(
   const before = result.slice(0, analysisStart + analysisHeader.length);
   const after = result.slice(decisionStart);
 
-  return before + formatAnalysis(response) + "\n" + after;
+  return `${before}${formatAnalysis(response)}\n${after}`;
 }
 
 function formatAnalysis(response: LlmResponse): string {

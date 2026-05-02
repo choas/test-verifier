@@ -1,5 +1,5 @@
 import { loadConfig } from "../config";
-import { createLlmClient } from "../llm";
+import { createLlmClient, type LlmClient } from "../llm";
 
 const DEFAULT_PROMPT = `Analyze this test diff and respond with a JSON object containing: summary, risk_assessment (SAFE/LOW/SUSPICIOUS/CRITICAL), concerns (array), and recommendation.
 
@@ -18,19 +18,14 @@ const DEFAULT_PROMPT = `Analyze this test diff and respond with a JSON object co
 ## Related Production Code Changes
 No production files were modified in the same commit.`;
 
-export async function testLlm(
-  cwd: string = process.cwd(),
-  prompt?: string,
-): Promise<void> {
+export async function testLlm(cwd: string = process.cwd(), prompt?: string): Promise<void> {
   const config = await loadConfig(cwd);
 
-  let client;
+  let client: LlmClient;
   try {
     client = createLlmClient(config);
   } catch (e) {
-    console.error(
-      `test-verifier: ${e instanceof Error ? e.message : String(e)}`,
-    );
+    console.error(`test-verifier: ${e instanceof Error ? e.message : String(e)}`);
     process.exit(1);
   }
 
@@ -38,16 +33,14 @@ export async function testLlm(
 
   console.log(`Provider: ${config.llm.provider}`);
   console.log(`Model:    ${config.llm.model}`);
-  console.log(`Prompt:   ${text.length > 80 ? text.slice(0, 80) + "…" : text}`);
+  console.log(`Prompt:   ${text.length > 80 ? `${text.slice(0, 80)}…` : text}`);
   console.log();
 
   try {
     const response = await client.chat(text);
     console.log(response);
   } catch (e) {
-    console.error(
-      `test-verifier: LLM error: ${e instanceof Error ? e.message : String(e)}`,
-    );
+    console.error(`test-verifier: LLM error: ${e instanceof Error ? e.message : String(e)}`);
     process.exit(1);
   }
 }

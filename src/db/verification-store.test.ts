@@ -48,28 +48,28 @@ describe("VerificationStore", () => {
     store.insert(record);
     const result = store.getById("tv_test_001");
     expect(result).not.toBeNull();
-    expect(result!.id).toBe("tv_test_001");
-    expect(result!.testFile).toBe("src/utils.test.ts");
-    expect(result!.testFunctions).toEqual(["adds numbers", "subtracts"]);
-    expect(result!.severity).toBe(Severity.CRITICAL);
-    expect(result!.status).toBe("pending");
-    expect(result!.commit).toBe("abc1234");
+    expect(result?.id).toBe("tv_test_001");
+    expect(result?.testFile).toBe("src/utils.test.ts");
+    expect(result?.testFunctions).toEqual(["adds numbers", "subtracts"]);
+    expect(result?.severity).toBe(Severity.CRITICAL);
+    expect(result?.status).toBe("pending");
+    expect(result?.commit).toBe("abc1234");
   });
 
   test("insert replaces existing record with same id", () => {
     store.insert(makeRecord({ severity: Severity.LOW }));
     store.insert(makeRecord({ severity: Severity.CRITICAL }));
     const result = store.getById("tv_test_001");
-    expect(result!.severity).toBe(Severity.CRITICAL);
+    expect(result?.severity).toBe(Severity.CRITICAL);
   });
 
   test("updateStatus changes status and reviewer info", () => {
     store.insert(makeRecord());
     store.updateStatus("tv_test_001", "approved", "alice@test.com", "Looks good");
     const result = store.getById("tv_test_001");
-    expect(result!.status).toBe("approved");
-    expect(result!.reviewer).toBe("alice@test.com");
-    expect(result!.rationale).toBe("Looks good");
+    expect(result?.status).toBe("approved");
+    expect(result?.reviewer).toBe("alice@test.com");
+    expect(result?.rationale).toBe("Looks good");
   });
 
   test("findByTestFile returns matching records", () => {
@@ -88,7 +88,12 @@ describe("VerificationStore", () => {
   });
 
   test("findByTestFileAndFunction matches function name in JSON array", () => {
-    store.insert(makeRecord({ id: "tv_001", testFunctions: ["adds numbers", "multiplies"] }));
+    store.insert(
+      makeRecord({
+        id: "tv_001",
+        testFunctions: ["adds numbers", "multiplies"],
+      }),
+    );
     store.insert(makeRecord({ id: "tv_002", testFunctions: ["subtracts"] }));
 
     const results = store.findByTestFileAndFunction("src/utils.test.ts", "adds numbers");
@@ -119,16 +124,20 @@ describe("VerificationStore", () => {
   });
 
   test("findNeedsFixForTestFunction filters by function name", () => {
-    store.insert(makeRecord({
-      id: "tv_001",
-      status: "needs_fix",
-      testFunctions: ["adds numbers"],
-    }));
-    store.insert(makeRecord({
-      id: "tv_002",
-      status: "needs_fix",
-      testFunctions: ["subtracts"],
-    }));
+    store.insert(
+      makeRecord({
+        id: "tv_001",
+        status: "needs_fix",
+        testFunctions: ["adds numbers"],
+      }),
+    );
+    store.insert(
+      makeRecord({
+        id: "tv_002",
+        status: "needs_fix",
+        testFunctions: ["subtracts"],
+      }),
+    );
 
     const results = store.findNeedsFixForTestFunction("src/utils.test.ts", "adds numbers");
     expect(results).toHaveLength(1);
@@ -191,20 +200,22 @@ describe("VerificationStore", () => {
   });
 
   test("handles non-ASCII content in test file and function names", () => {
-    store.insert(makeRecord({
-      id: "tv_unicode",
-      testFile: "src/国際化.test.ts",
-      testFunctions: ["日本語テスト", "Ünïcödé test"],
-    }));
+    store.insert(
+      makeRecord({
+        id: "tv_unicode",
+        testFile: "src/国際化.test.ts",
+        testFunctions: ["日本語テスト", "Ünïcödé test"],
+      }),
+    );
 
     const result = store.getById("tv_unicode");
-    expect(result!.testFile).toBe("src/国際化.test.ts");
-    expect(result!.testFunctions).toEqual(["日本語テスト", "Ünïcödé test"]);
+    expect(result?.testFile).toBe("src/国際化.test.ts");
+    expect(result?.testFunctions).toEqual(["日本語テスト", "Ünïcödé test"]);
   });
 
   test("handles empty test_functions array", () => {
     store.insert(makeRecord({ id: "tv_empty", testFunctions: [] }));
     const result = store.getById("tv_empty");
-    expect(result!.testFunctions).toEqual([]);
+    expect(result?.testFunctions).toEqual([]);
   });
 });

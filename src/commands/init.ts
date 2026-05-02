@@ -48,9 +48,7 @@ export async function init(cwd: string = process.cwd()): Promise<void> {
       `\nPlease commit the public key:\n  git add ${pubPath} && git commit -m "test-verifier: add public key for ${email}"`,
     );
   } else {
-    console.log(
-      `Keypair already exists for this repo (repo-id: ${keysResult.repoId})`,
-    );
+    console.log(`Keypair already exists for this repo (repo-id: ${keysResult.repoId})`);
   }
 }
 
@@ -60,7 +58,7 @@ async function ensureConfigJson(cwd: string): Promise<void> {
   if (await file.exists()) return;
 
   const defaults = configSchema.parse({});
-  await writeFile(cfgPath, JSON.stringify(defaults, null, 2) + "\n");
+  await writeFile(cfgPath, `${JSON.stringify(defaults, null, 2)}\n`);
   console.log("Created .test-verifier/config.json with default settings");
 }
 
@@ -78,6 +76,6 @@ async function ensureGitignore(cwd: string): Promise<void> {
   if (missing.length === 0) return;
 
   const suffix = content.length > 0 && !content.endsWith("\n") ? "\n" : "";
-  await writeFile(gitignorePath, content + suffix + missing.join("\n") + "\n");
+  await writeFile(gitignorePath, `${content}${suffix}${missing.join("\n")}\n`);
   console.log("Updated .gitignore with sqlite database patterns");
 }

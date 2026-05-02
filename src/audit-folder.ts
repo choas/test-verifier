@@ -1,12 +1,18 @@
 import { readFile, writeFile, mkdir, rename, readdir, lstat, unlink } from "node:fs/promises";
 import { join } from "node:path";
 import type { StubStatus } from "./types";
-import { assertSafeFilename, assertValidSha } from "./path-guard";
+import { assertSafeFilename } from "./path-guard";
 
 const AUDIT_DIR = ".test-verifier";
 const HEAD_FILE = "HEAD";
 const SHA_OR_LABEL_RE = /^[A-Z_]+$|^[0-9a-f]{4,64}$/;
-const STATUS_DIRS: readonly StubStatus[] = ["pending", "approved", "rejected", "needs_fix", "resolved"] as const;
+const STATUS_DIRS: readonly StubStatus[] = [
+  "pending",
+  "approved",
+  "rejected",
+  "needs_fix",
+  "resolved",
+] as const;
 const EXTRA_DIRS = ["archive", "keys"] as const;
 
 export function auditDir(repoRoot: string): string {
@@ -19,9 +25,7 @@ export function statusDir(repoRoot: string, status: StubStatus): string {
 
 export async function ensureAuditDir(repoRoot: string): Promise<void> {
   const dirs = [...STATUS_DIRS, ...EXTRA_DIRS];
-  await Promise.all(
-    dirs.map((d) => mkdir(join(repoRoot, AUDIT_DIR, d), { recursive: true })),
-  );
+  await Promise.all(dirs.map((d) => mkdir(join(repoRoot, AUDIT_DIR, d), { recursive: true })));
 }
 
 export async function readHead(repoRoot: string): Promise<string | null> {
@@ -44,7 +48,7 @@ export async function writeHead(repoRoot: string, sha: string): Promise<void> {
     throw new Error(`Refusing to write invalid SHA/label to HEAD: ${sha}`);
   }
   await mkdir(join(repoRoot, AUDIT_DIR), { recursive: true });
-  await writeFile(join(repoRoot, AUDIT_DIR, HEAD_FILE), sha + "\n");
+  await writeFile(join(repoRoot, AUDIT_DIR, HEAD_FILE), `${sha}\n`);
 }
 
 export async function listByStatus(repoRoot: string, status: StubStatus): Promise<string[]> {
@@ -78,7 +82,11 @@ export async function moveToNeedsFix(repoRoot: string, filename: string): Promis
   return moveFile(repoRoot, filename, "pending", "needs_fix");
 }
 
-export async function moveToResolved(repoRoot: string, filename: string, from: StubStatus = "needs_fix"): Promise<string> {
+export async function moveToResolved(
+  repoRoot: string,
+  filename: string,
+  from: StubStatus = "needs_fix",
+): Promise<string> {
   return moveFile(repoRoot, filename, from, "resolved");
 }
 
@@ -100,10 +108,7 @@ export async function moveFile(
   return dest;
 }
 
-export async function pruneOldFiles(
-  dir: string,
-  maxAgeDays: number,
-): Promise<number> {
+export async function pruneOldFiles(dir: string, maxAgeDays: number): Promise<number> {
   let removed = 0;
   const cutoff = Date.now() - maxAgeDays * 24 * 60 * 60 * 1000;
   let entries: string[];

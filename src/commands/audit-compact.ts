@@ -75,7 +75,7 @@ export async function auditCompact(cwd: string = process.cwd()): Promise<void> {
   }
 
   const cutoff = new Date(opts.before);
-  if (isNaN(cutoff.getTime())) {
+  if (Number.isNaN(cutoff.getTime())) {
     console.error(`test-verifier: invalid date '${opts.before}'.`);
     process.exit(1);
   }
@@ -102,7 +102,7 @@ export async function auditCompact(cwd: string = process.cwd()): Promise<void> {
     const parsed = parseMarkdown(raw);
     const createdAt = new Date(parsed.stub.created_at);
 
-    if (isNaN(createdAt.getTime()) || createdAt >= cutoff) continue;
+    if (Number.isNaN(createdAt.getTime()) || createdAt >= cutoff) continue;
 
     const topFinding = parsed.findings[0];
     const findingSummary = topFinding

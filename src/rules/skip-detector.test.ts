@@ -1,6 +1,6 @@
 import { describe, test, expect } from "bun:test";
 import { detectSkipChanges } from "./skip-detector";
-import { extractTestBlocksPair, extractTestBlocks } from "../test-block-extractor";
+import { extractTestBlocksPair } from "../test-block-extractor";
 import { Severity } from "../types";
 import { defineConfig } from "../config";
 
@@ -293,16 +293,16 @@ it('test-c', () => { expect(3).toBe(3); });
     expect(findings).toHaveLength(3);
 
     const skipFinding = findings.find((f) => f.message.includes("test-a"));
-    expect(skipFinding!.severity).toBe(Severity.CRITICAL);
-    expect(skipFinding!.message).toContain(".skip");
+    expect(skipFinding?.severity).toBe(Severity.CRITICAL);
+    expect(skipFinding?.message).toContain(".skip");
 
     const todoFinding = findings.find((f) => f.message.includes("test-b"));
-    expect(todoFinding!.severity).toBe(Severity.CRITICAL);
-    expect(todoFinding!.message).toContain(".todo");
+    expect(todoFinding?.severity).toBe(Severity.CRITICAL);
+    expect(todoFinding?.message).toContain(".todo");
 
     const unskipFinding = findings.find((f) => f.message.includes("test-c"));
-    expect(unskipFinding!.severity).toBe(Severity.SAFE);
-    expect(unskipFinding!.message).toContain("re-enabled");
+    expect(unskipFinding?.severity).toBe(Severity.SAFE);
+    expect(unskipFinding?.message).toContain("re-enabled");
   });
 
   test("handles nested test blocks inside describe", () => {

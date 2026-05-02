@@ -1,5 +1,5 @@
-import { createHash, generateKeyPairSync, createPublicKey, createPrivateKey } from "node:crypto";
-import { readFile, writeFile, mkdir, chmod, stat } from "node:fs/promises";
+import { createHash, generateKeyPairSync } from "node:crypto";
+import { readFile, writeFile, mkdir, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { assertSafeFilename } from "../path-guard";
 
@@ -51,7 +51,11 @@ export async function storePrivateKey(repoId: string, privateKeyPem: string): Pr
   return path;
 }
 
-export async function storePublicKey(repoRoot: string, email: string, publicKeyPem: string): Promise<string> {
+export async function storePublicKey(
+  repoRoot: string,
+  email: string,
+  publicKeyPem: string,
+): Promise<string> {
   const dir = publicKeyDir(repoRoot);
   await mkdir(dir, { recursive: true });
   const path = publicKeyPath(repoRoot, email);
@@ -98,7 +102,10 @@ export async function getOriginUrl(repoRoot: string): Promise<string> {
   return text.trim();
 }
 
-export async function initKeys(repoRoot: string, email: string): Promise<{ repoId: string; created: boolean }> {
+export async function initKeys(
+  repoRoot: string,
+  email: string,
+): Promise<{ repoId: string; created: boolean }> {
   const originUrl = await getOriginUrl(repoRoot);
   const repoId = getRepoId(originUrl);
 

@@ -22,7 +22,7 @@ async function markOneNeedsFix(
   const updated = signFile(privateKey, content, "needs_fix", email, rationale);
 
   const fm = parseFrontMatter(content);
-  const stubId = fm["id"] || filename.replace(/\.md$/, "");
+  const stubId = fm.id || filename.replace(/\.md$/, "");
   store.updateStatus(stubId, "needs_fix", email, rationale);
 
   const dest = await moveToNeedsFix(cwd, filename);
@@ -36,9 +36,7 @@ export async function needsFix(cwd: string = process.cwd()): Promise<void> {
   const findingId = Bun.argv.slice(3).find((arg) => !arg.startsWith("-"));
 
   if (allFlag && findingId) {
-    console.error(
-      "Error: Cannot use --all and a specific finding ID simultaneously.",
-    );
+    console.error("Error: Cannot use --all and a specific finding ID simultaneously.");
     process.exit(1);
   }
 
@@ -53,7 +51,10 @@ export async function needsFix(cwd: string = process.cwd()): Promise<void> {
   if (rationaleIdx !== -1 && Bun.argv[rationaleIdx + 1]) {
     rationale = Bun.argv[rationaleIdx + 1];
   } else {
-    const rl = createInterface({ input: process.stdin, output: process.stdout });
+    const rl = createInterface({
+      input: process.stdin,
+      output: process.stdout,
+    });
     rationale = await rl.question("Rationale: ");
     rl.close();
     if (!rationale.trim()) {
@@ -89,7 +90,7 @@ export async function needsFix(cwd: string = process.cwd()): Promise<void> {
       return;
     }
 
-    const { filename } = await findPendingFile(cwd, findingId!);
+    const { filename } = await findPendingFile(cwd, findingId as string);
     const dest = await markOneNeedsFix(cwd, filename, rationale, email, privateKey, store);
 
     console.log(`Needs fix: ${findingId}`);

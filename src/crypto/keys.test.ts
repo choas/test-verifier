@@ -1,5 +1,5 @@
 import { describe, test, expect, beforeEach, afterEach } from "bun:test";
-import { mkdtemp, rm, readFile, stat } from "node:fs/promises";
+import { mkdtemp, rm, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { createPrivateKey, createPublicKey } from "node:crypto";
@@ -10,7 +10,6 @@ import {
   storePublicKey,
   loadPrivateKey,
   loadPublicKey,
-  privateKeyDir,
   privateKeyPath,
   publicKeyPath,
   privateKeyFileMode,

@@ -1,6 +1,5 @@
 import { describe, test, expect } from "bun:test";
 import { parseDiff } from "./diff-parser";
-import type { FileDiff, DiffHunk, DiffLine } from "./diff-parser";
 
 const SIMPLE_DIFF = `diff --git a/src/utils.test.ts b/src/utils.test.ts
 index abc1234..def5678 100644
@@ -127,9 +126,7 @@ describe("parseDiff", () => {
   test("tracks new line numbers for added and context lines", () => {
     const hunk = parseDiff(SIMPLE_DIFF)[0].hunks[0];
 
-    const contextAndAdded = hunk.lines.filter(
-      (l) => l.type === "context" || l.type === "added",
-    );
+    const contextAndAdded = hunk.lines.filter((l) => l.type === "context" || l.type === "added");
     const newNumbers = contextAndAdded.map((l) => l.newLineNumber);
     expect(newNumbers).toEqual([1, 2, 3, 4, 5]);
   });

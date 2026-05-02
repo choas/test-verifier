@@ -23,7 +23,7 @@ const YELLOW = "\x1b[33m";
 const CYAN = "\x1b[36m";
 const BG_RED = "\x1b[41m";
 const BG_GREEN = "\x1b[42m";
-const BG_YELLOW = "\x1b[43m";
+const _BG_YELLOW = "\x1b[43m";
 
 const SEVERITY_STYLE: Record<string, string> = {
   SAFE: `${GREEN}SAFE${RESET}`,
@@ -55,9 +55,7 @@ function displayFile(index: number, total: number, file: ReviewableFile): void {
   const ruler = "─".repeat(60);
 
   console.log(`\n${DIM}${ruler}${RESET}`);
-  console.log(
-    `${BOLD}[${index + 1}/${total}]${RESET} ${parsed.stub.test_file}`,
-  );
+  console.log(`${BOLD}[${index + 1}/${total}]${RESET} ${parsed.stub.test_file}`);
   console.log(
     `Severity: ${colorSeverity(parsed.stub.severity)}  │  Commit: ${DIM}${parsed.stub.commit.slice(0, 7)}${RESET}  │  ${DIM}${parsed.stub.created_at}${RESET}`,
   );
@@ -126,9 +124,7 @@ export async function review(cwd: string = process.cwd()): Promise<void> {
     return;
   }
 
-  console.log(
-    `\n${enriched.length} file(s) ready for review.\n`,
-  );
+  console.log(`\n${enriched.length} file(s) ready for review.\n`);
 
   const MAGENTA = "\x1b[35m";
   const BG_MAGENTA = "\x1b[45m";
@@ -154,7 +150,8 @@ export async function review(cwd: string = process.cwd()): Promise<void> {
         if (relevantPrev.length > 0) {
           console.log(`\n${DIM}Previous verifications:${RESET}`);
           for (const p of relevantPrev.slice(0, 3)) {
-            const statusColor = p.status === "needs_fix" ? MAGENTA : p.status === "approved" ? GREEN : RED;
+            const statusColor =
+              p.status === "needs_fix" ? MAGENTA : p.status === "approved" ? GREEN : RED;
             console.log(`  ${statusColor}[${p.status}]${RESET} ${p.id} (${p.rule})`);
           }
           if (relevantPrev.length > 3) {
@@ -173,7 +170,9 @@ export async function review(cwd: string = process.cwd()): Promise<void> {
 
       switch (answer) {
         case "a": {
-          const rationale = (await rl.question(`  ${DIM}Rationale:${RESET} `)).trim() || "approved via interactive review";
+          const rationale =
+            (await rl.question(`  ${DIM}Rationale:${RESET} `)).trim() ||
+            "approved via interactive review";
           const updated = signFile(privateKey, file.raw, "approved", email, rationale);
           await writeFile(file.filePath, updated);
           await moveToApproved(cwd, file.filename);
@@ -183,7 +182,9 @@ export async function review(cwd: string = process.cwd()): Promise<void> {
           break;
         }
         case "r": {
-          const rationale = (await rl.question(`  ${DIM}Rationale:${RESET} `)).trim() || "rejected via interactive review";
+          const rationale =
+            (await rl.question(`  ${DIM}Rationale:${RESET} `)).trim() ||
+            "rejected via interactive review";
           const updated = signFile(privateKey, file.raw, "rejected", email, rationale);
           await writeFile(file.filePath, updated);
           await moveToRejected(cwd, file.filename);
@@ -193,7 +194,9 @@ export async function review(cwd: string = process.cwd()): Promise<void> {
           break;
         }
         case "f": {
-          const rationale = (await rl.question(`  ${DIM}Rationale:${RESET} `)).trim() || "needs fix via interactive review";
+          const rationale =
+            (await rl.question(`  ${DIM}Rationale:${RESET} `)).trim() ||
+            "needs fix via interactive review";
           const updated = signFile(privateKey, file.raw, "needs_fix", email, rationale);
           await writeFile(file.filePath, updated);
           await moveToNeedsFix(cwd, file.filename);

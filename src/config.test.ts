@@ -84,26 +84,25 @@ describe("defineConfig", () => {
   });
 
   test("rejects invalid severity value", () => {
-    expect(() =>
-      defineConfig({ rules: { assertionRemoved: "INVALID" as any } }),
-    ).toThrow();
+    // biome-ignore lint/suspicious/noExplicitAny: testing invalid input
+    expect(() => defineConfig({ rules: { assertionRemoved: "INVALID" as any } })).toThrow();
   });
 
   test("rejects invalid llm provider", () => {
-    expect(() =>
-      defineConfig({ llm: { provider: "openai" as any } }),
-    ).toThrow();
+    // biome-ignore lint/suspicious/noExplicitAny: testing invalid input
+    expect(() => defineConfig({ llm: { provider: "openai" as any } })).toThrow();
   });
 
   test("rejects negative cacheTtlDays", () => {
-    expect(() =>
-      defineConfig({ audit: { cacheTtlDays: -1 } }),
-    ).toThrow();
+    expect(() => defineConfig({ audit: { cacheTtlDays: -1 } })).toThrow();
   });
 
   test("rejects invalid truncation strategy", () => {
     expect(() =>
-      defineConfig({ rules: { snapshot: { truncationStrategy: "invalid" as any } } }),
+      defineConfig({
+        // biome-ignore lint/suspicious/noExplicitAny: testing invalid input
+        rules: { snapshot: { truncationStrategy: "invalid" as any } },
+      }),
     ).toThrow();
   });
 });

@@ -18,7 +18,10 @@ export async function reject(cwd: string = process.cwd()): Promise<void> {
   if (rationaleIdx !== -1 && Bun.argv[rationaleIdx + 1]) {
     rationale = Bun.argv[rationaleIdx + 1];
   } else {
-    const rl = createInterface({ input: process.stdin, output: process.stdout });
+    const rl = createInterface({
+      input: process.stdin,
+      output: process.stdout,
+    });
     rationale = await rl.question("Rationale: ");
     rl.close();
     if (!rationale.trim()) {
@@ -39,7 +42,7 @@ export async function reject(cwd: string = process.cwd()): Promise<void> {
   const store = new VerificationStore(auditDir(cwd));
   try {
     const fm = parseFrontMatter(content);
-    const stubId = fm["id"] || findingId;
+    const stubId = fm.id || findingId;
     store.updateStatus(stubId, "rejected", email, rationale);
   } finally {
     store.close();

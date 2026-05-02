@@ -114,7 +114,6 @@ export function parseDiff(diffStr: string): FileDiff[] {
       newLine++;
     } else if (line.startsWith("\\")) {
       // "\ No newline at end of file" — skip
-      continue;
     }
   }
 

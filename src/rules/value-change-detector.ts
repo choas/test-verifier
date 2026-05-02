@@ -13,7 +13,7 @@ export function parseAssertionParts(assertionText: string): AssertionParts | nul
     useInMemoryFileSystem: true,
     compilerOptions: { allowJs: true },
   });
-  const sf = project.createSourceFile("__parse.ts", assertionText + ";");
+  const sf = project.createSourceFile("__parse.ts", `${assertionText};`);
 
   const exprStmt = sf.getStatements()[0]?.asKind(SyntaxKind.ExpressionStatement);
   if (!exprStmt) return null;
@@ -28,7 +28,10 @@ export function parseAssertionParts(assertionText: string): AssertionParts | nul
   const outerCall = topExpr.asKind(SyntaxKind.CallExpression);
   if (!outerCall) return null;
 
-  const expectedArgs = outerCall.getArguments().map((a) => a.getText()).join(", ");
+  const expectedArgs = outerCall
+    .getArguments()
+    .map((a) => a.getText())
+    .join(", ");
 
   const propAccess = outerCall.getExpression().asKind(SyntaxKind.PropertyAccessExpression);
   if (!propAccess) return null;
@@ -57,10 +60,7 @@ export function parseAssertionParts(assertionText: string): AssertionParts | nul
   };
 }
 
-export function detectValueChanges(
-  before: TestBlock[],
-  after: TestBlock[],
-): Finding[] {
+export function detectValueChanges(before: TestBlock[], after: TestBlock[]): Finding[] {
   const findings: Finding[] = [];
 
   const flatBefore = flattenTests(before);

@@ -46,7 +46,7 @@ export function buildUserPrompt(input: LlmPromptInput): string {
 
   parts.push(`## Test File\n\`${input.testFilePath}\``);
 
-  parts.push("## Test Diff\n```diff\n" + input.testDiff + "\n```");
+  parts.push(`## Test Diff\n\`\`\`diff\n${input.testDiff}\n\`\`\``);
 
   if (input.ruleFindings.length > 0) {
     parts.push(
@@ -60,11 +60,7 @@ export function buildUserPrompt(input: LlmPromptInput): string {
   }
 
   if (input.relatedProdDiffs) {
-    parts.push(
-      "## Related Production Code Changes\n```diff\n" +
-        input.relatedProdDiffs +
-        "\n```",
-    );
+    parts.push(`## Related Production Code Changes\n\`\`\`diff\n${input.relatedProdDiffs}\n\`\`\``);
   } else {
     parts.push(
       "## Related Production Code Changes\nNo production files were modified in the same commit.",
@@ -73,4 +69,3 @@ export function buildUserPrompt(input: LlmPromptInput): string {
 
   return parts.join("\n\n");
 }
-

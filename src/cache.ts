@@ -15,10 +15,7 @@ export class AnalysisCache {
   private maxAgeDays: number;
   private maxEntries: number;
 
-  constructor(
-    auditDir: string,
-    opts?: { maxAgeDays?: number; maxEntries?: number },
-  ) {
+  constructor(auditDir: string, opts?: { maxAgeDays?: number; maxEntries?: number }) {
     const dbPath = join(auditDir, "cache.sqlite");
     this.db = new Database(dbPath, { create: true });
     this.db.run(
@@ -35,9 +32,7 @@ export class AnalysisCache {
   }
 
   private prune(): void {
-    const cutoff = new Date(
-      Date.now() - this.maxAgeDays * 24 * 60 * 60 * 1000,
-    ).toISOString();
+    const cutoff = new Date(Date.now() - this.maxAgeDays * 24 * 60 * 60 * 1000).toISOString();
     this.db.run("DELETE FROM analysis_cache WHERE created_at < ?", [cutoff]);
 
     const countRow = CountRowSchema.parse(
@@ -53,25 +48,19 @@ export class AnalysisCache {
     }
   }
 
-  static computeKey(
-    testDiff: string,
-    relatedProdDiff: string,
-    modelVersion: string,
-  ): string {
+  static computeKey(testDiff: string, relatedProdDiff: string, modelVersion: string): string {
     const input = JSON.stringify([testDiff, relatedProdDiff, modelVersion]);
     return createHash("sha256").update(input).digest("hex");
   }
 
   get(key: string): LlmResponse | null {
-    const raw = this.db
-      .query("SELECT response FROM analysis_cache WHERE key = ?")
-      .get(key);
+    const raw = this.db.query("SELECT response FROM analysis_cache WHERE key = ?").get(key);
     if (!raw) return null;
-    
+
     try {
       const row = CacheRowSchema.parse(raw);
       return LlmResponseSchema.parse(JSON.parse(row.response));
-    } catch (e) {
+    } catch (_e) {
       console.error(`  warn: deleting corrupt cache entry for key ${key}`);
       this.db.run("DELETE FROM analysis_cache WHERE key = ?", [key]);
       return null;
