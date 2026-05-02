@@ -67,11 +67,12 @@ The rule engine and the LLM analyzer run at different points in the workflow.
 A developer who wants to review before push runs `bunx test-verifier enrich && bunx test-verifier review` manually at any time.
 
 ```
-Commit  → check     → stub pending files in pending/   (fast, rules only)
+Commit  → check     → stub pending files in pending/        (fast, rules only)
+                    → auto-resolve needs_fix/ → resolved/   (if rules no longer trigger)
         → review?   → optional, requires enrichment first
-Push    → enrich    → fills in LLM analysis            (slow, LLM calls)
-        → review    → human approves/rejects each
-        → push gated on pending/ and rejected/ both empty
+Push    → enrich    → fills in LLM analysis                 (slow, LLM calls)
+        → review    → human approves, rejects, or marks needs-fix
+        → push gated on pending/, rejected/, and needs_fix/ all empty
 ```
 
 Why this matters: AI agents iterating on test changes can commit dozens of times in rapid succession without burning LLM calls on every iteration. The LLM cost is paid once, at the boundary where the changes leave the developer's machine.
@@ -194,6 +195,10 @@ The audit trail is a folder of markdown files committed to the repo. Granularity
 │   └── 2026-04-28T09-12_111aaaa_tax-calculate-test.md
 ├── rejected/
 │   └── 2026-04-27T16-30_333cccc_old-flow-test.md
+├── needs_fix/
+│   └── 2026-04-30T11-07_1813477_src-rule-engine-test.md
+├── resolved/
+│   └── 2026-04-30T08-26_UNCOMMI_src-rule-engine-test.md
 └── archive/
     └── 2025-Q4.md
 ```
@@ -250,7 +255,9 @@ generator_signature: ed25519:...
 
 Enriched state (after `enrich`): the front matter flips `llm_enriched: true`, `llm_model: claude-sonnet-4-7` is added, and the Analysis section is filled in with summary, detail, and concerns. The Decision section is still empty until a human acts.
 
-After approval, the Decision section is appended with a signed entry and the file moves to `approved/`.
+After approval, the Decision section is appended with a signed entry and the file moves to `approved/`. After `needs-fix`, the file moves to `needs_fix/` with a signed decision. If `check` later determines the original rules no longer trigger, the file auto-resolves to `resolved/`. A `needs_fix` finding can also be approved directly, moving it to `approved/`.
+
+Valid status values: `pending`, `approved`, `rejected`, `needs_fix`, `resolved`.
 
 ### Approval mechanics
 
@@ -260,6 +267,31 @@ bunx test-verifier approve tv_2026-04-29T14-21_abc1234_auth-validate-test \
 ```
 
 Appends a signed decision section, moves the file to `approved/`. The signature covers both the original analysis (pinned by the diff hash) and the decision text.
+
+The `approve` command accepts findings in either `pending` or `needs_fix` status. A finding in `needs_fix` that is approved moves directly from `needs_fix/` to `approved/`, allowing reviewers to accept a previously flagged finding after the developer has addressed the concern or provided sufficient rationale.
+
+### Needs-fix workflow
+
+```
+bunx test-verifier needs-fix tv_2026-04-29T14-21_abc1234_auth-validate-test \
+  --rationale "test no longer covers the edge case from issue #399"
+bunx test-verifier needs-fix --all --rationale "batch review: all findings need attention"
+```
+
+A reviewer marks a finding as `needs_fix` instead of rejecting it outright. This signals that the test change requires attention but is not categorically wrong. The finding moves from `pending/` to `needs_fix/` and blocks the push (same as pending).
+
+**Auto-resolution.** When `check` runs, it re-evaluates all `needs_fix` findings. If the original rules no longer trigger for a finding (i.e., the developer has fixed the issue), the finding is automatically moved to `resolved/` with status `resolved` and an auto-generated rationale.
+
+**Manual approval.** A `needs_fix` finding can also be approved directly via `approve`, bypassing auto-resolution. This covers cases where the reviewer reconsiders or the developer provides a convincing rationale without changing the code.
+
+The five statuses form a directed graph:
+
+```
+pending ──→ approved
+pending ──→ rejected
+pending ──→ needs_fix ──→ resolved   (auto, when rules no longer trigger)
+                      ──→ approved   (manual, via approve command)
+```
 
 ### HEAD tracking
 
@@ -362,12 +394,12 @@ export default defineConfig({
 ## 12. Integration Layers
 
 - **Husky pre-commit**: `bunx test-verifier check`
-  Runs the rule engine. Produces stub pending files. Fast.
+  Runs the rule engine. Produces stub pending files. Also auto-resolves `needs_fix` findings when their original rules no longer trigger. Fast.
 - **Husky pre-push**: `bunx test-verifier enrich && bunx test-verifier audit verify --no-pending --no-rejected`
-  Fills in LLM analysis, then blocks the push if anything is unresolved or signatures fail.
-- **CI on PRs**: `bunx test-verifier audit verify --signatures` plus the same pending/rejected check.
+  Fills in LLM analysis, then blocks the push if anything is unresolved (pending, rejected, or needs_fix) or signatures fail.
+- **CI on PRs**: `bunx test-verifier audit verify --signatures` plus the same pending/rejected/needs_fix check.
 - **CI on release branches**: additionally blocks if any approved file has an unresolved peer-review section with `verdict: disputed`.
-- **MCP server**: exposes `check`, `enrich`, and `list_pending` to AI agents. No `approve` or `reject`. The pending file's front matter records `generator: agent:<session-id>` so audit trails distinguish agent-produced from human-produced findings.
+- **MCP server**: exposes `check`, `enrich`, and `list_pending` to AI agents. No `approve`, `reject`, or `needs-fix`. The pending file's front matter records `generator: agent:<session-id>` so audit trails distinguish agent-produced from human-produced findings.
 
 ## 13. SvelteKit Specifics
 
@@ -380,7 +412,7 @@ export default defineConfig({
 
 ## 14. Implementation Roadmap
 
-**MVP.** TS library, ts-morph parser, rule engine with skip/delete/matcher-table/tautology detector. Per-commit markdown writer with stub state. `.test-verifier/HEAD` tracking. Ed25519 keygen and signing. CLI: `init`, `check`, `enrich`, `review`, `approve`, `reject`. Husky-compatible.
+**MVP.** TS library, ts-morph parser, rule engine with skip/delete/matcher-table/tautology detector. Per-commit markdown writer with stub state. `.test-verifier/HEAD` tracking. Ed25519 keygen and signing. CLI: `init`, `check`, `enrich`, `review`, `approve`, `reject`, `needs-fix`. Husky-compatible.
 
 **v0.1.** Snapshot test handling per §7. `audit verify` for signatures. `audit compact`. `relatedProdLookback` wired through.
 

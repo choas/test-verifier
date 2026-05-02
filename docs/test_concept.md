@@ -332,25 +332,30 @@ Reads and writes finding files with YAML front matter, diff sections, and analys
 
 ## 14. Audit Folder Operations
 
-Manages the `.test-verifier/` directory structure for pending, approved, rejected, and archived findings.
+Manages the `.test-verifier/` directory structure for pending, approved, rejected, needs_fix, resolved, and archived findings.
 
 ### Basic
 
 - Create the audit folder structure on init
 - Move a finding from `pending/` to `approved/`
 - Move a finding from `pending/` to `rejected/`
+- Move a finding from `pending/` to `needs_fix/`
 
 ### Advanced
 
+- Move a finding from `needs_fix/` to `resolved/` (auto-resolution)
+- Move a finding from `needs_fix/` to `approved/` (manual approval)
 - Archive old approved findings during compaction
 - List all pending findings for review
 - Verify audit trail integrity across all folders
+- Generic `moveFile` supports arbitrary status transitions
 
 ### Edge Cases
 
 - Audit folder missing or partially deleted
 - Concurrent writes to the same finding file
 - Finding file with an unknown status value
+- Approving a finding that is in `needs_fix` rather than `pending`
 
 ---
 
@@ -406,18 +411,23 @@ Anthropic and Ollama clients for enriching findings with AI-powered analysis.
 
 ## 17. Commands (CLI)
 
-User-facing commands: init, check, enrich, review, approve, reject, audit verify, audit compact, setup-hooks.
+User-facing commands: init, check, enrich, review, approve, reject, needs-fix, list, history, commit, sync, audit verify, audit compact, setup-hooks.
 
 ### Basic
 
 - `init` creates audit directory structure and keypair
-- `check` runs rules and produces pending findings
-- `approve` signs and moves a finding to approved
+- `check` runs rules and produces pending findings; auto-resolves `needs_fix` findings when original rules no longer trigger
+- `approve` signs and moves a finding to approved (accepts both `pending` and `needs_fix` findings)
+- `needs-fix` marks a pending finding as needing a fix (supports `--all` for batch marking)
 
 ### Advanced
 
 - `enrich` calls LLM and updates pending findings with analysis
 - `review` displays paginated, color-coded findings interactively
+- `list` shows findings filtered by status (`--status pending|needs_fix|rejected|approved|resolved`) or all (`--all`)
+- `history` shows verification history for a test file (supports `--function` filter)
+- `commit` commits `.test-verifier/` changes with a descriptive message
+- `sync` rebuilds local database from `.test-verifier/` markdown files
 - `setup-hooks` installs pre-commit and pre-push hooks via Husky
 - `audit verify` validates all signatures in the audit trail
 - `audit compact` archives old findings
@@ -426,8 +436,11 @@ User-facing commands: init, check, enrich, review, approve, reject, audit verify
 
 - Running `check` with no staged test changes
 - Running `approve` on an already-approved finding
+- Running `approve` on a `needs_fix` finding (should move from `needs_fix/` to `approved/`)
+- Running `needs-fix` with both `--all` and a specific finding ID (mutually exclusive)
 - Running `enrich` when LLM provider is unavailable
 - Running `audit verify` with a corrupted finding file
+- `findFileByStatus` searching across multiple status directories to locate a finding
 
 ---
 
