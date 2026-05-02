@@ -1,4 +1,5 @@
 import { writeFile } from "node:fs/promises";
+import { createInterface } from "node:readline/promises";
 import { moveToApproved, moveFile, auditDir } from "../audit-folder";
 import { signFile } from "../crypto/sign-verify";
 import { parseMarkdown } from "../markdown-reader";
@@ -12,12 +13,19 @@ export async function approve(cwd: string = process.cwd()): Promise<void> {
     process.exit(1);
   }
 
+  let rationale: string;
   const rationaleIdx = Bun.argv.indexOf("--rationale");
-  if (rationaleIdx === -1 || !Bun.argv[rationaleIdx + 1]) {
-    console.error("Missing --rationale flag.");
-    process.exit(1);
+  if (rationaleIdx !== -1 && Bun.argv[rationaleIdx + 1]) {
+    rationale = Bun.argv[rationaleIdx + 1];
+  } else {
+    const rl = createInterface({ input: process.stdin, output: process.stdout });
+    rationale = await rl.question("Rationale: ");
+    rl.close();
+    if (!rationale.trim()) {
+      console.error("Rationale cannot be empty.");
+      process.exit(1);
+    }
   }
-  const rationale = Bun.argv[rationaleIdx + 1];
 
   const { filename, content, status } = await findFileByStatus(cwd, findingId, ["pending", "needs_fix"]);
   const { stub } = parseMarkdown(content);
