@@ -3,6 +3,8 @@ import { join } from "node:path";
 import { statusDir, listByStatus } from "../audit-folder";
 import { getOriginUrl, getRepoId, loadPrivateKey } from "../crypto/keys";
 import { getGitEmail } from "../git";
+import type { VerificationStore } from "../db/verification-store";
+import type { StubStatus } from "../types";
 
 export { getGitEmail } from "../git";
 
@@ -42,9 +44,7 @@ export async function findPendingFile(
   });
   if (!filename) {
     console.error(`No pending finding with id '${findingId}'.`);
-    console.error(
-      `Pending files: ${pending.length === 0 ? "(none)" : pending.join(", ")}`,
-    );
+    console.error(`Pending files: ${pending.length === 0 ? "(none)" : pending.join(", ")}`);
     process.exit(1);
   }
   const filePath = join(statusDir(cwd, "pending"), filename);
@@ -63,7 +63,7 @@ export async function findFileByStatus(
   filePath: string;
   content: string;
   status: FindableStatus;
-}> {
+} | null> {
   for (const status of statuses) {
     const files = await listByStatus(cwd, status);
     const strippedId = findingId.replace(/^tv_/, "");
@@ -82,7 +82,25 @@ export async function findFileByStatus(
       return { filename, filePath, content, status };
     }
   }
-  const allStatuses = statuses.join(", ");
-  console.error(`No finding with id '${findingId}' in ${allStatuses}.`);
-  process.exit(1);
+  return null;
+}
+
+export function resolveDbId(
+  store: VerificationStore,
+  findingId: string,
+  statuses: StubStatus[],
+): string | null {
+  const candidates = [findingId];
+  if (!findingId.startsWith("tv_")) {
+    candidates.push(`tv_${findingId}`);
+  } else {
+    candidates.push(findingId.replace(/^tv_/, ""));
+  }
+  for (const id of candidates) {
+    const record = store.getById(id);
+    if (record && statuses.includes(record.status)) {
+      return record.id;
+    }
+  }
+  return null;
 }
