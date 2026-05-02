@@ -5,7 +5,14 @@ import { defineConfig } from "./config";
 import type { FileDiff } from "./diff-parser";
 
 function finding(severity: Severity): Finding {
-  return { rule: "test", severity, line: 1, message: "", before: "", after: "" };
+  return {
+    rule: "test",
+    severity,
+    line: 1,
+    message: "",
+    before: "",
+    after: "",
+  };
 }
 
 describe("maxSeverity", () => {
@@ -15,28 +22,18 @@ describe("maxSeverity", () => {
 
   it("returns the highest severity among findings", () => {
     expect(
-      maxSeverity([
-        finding(Severity.LOW),
-        finding(Severity.CRITICAL),
-        finding(Severity.SAFE),
-      ]),
+      maxSeverity([finding(Severity.LOW), finding(Severity.CRITICAL), finding(Severity.SAFE)]),
     ).toBe(Severity.CRITICAL);
   });
 
   it("returns SUSPICIOUS when no CRITICAL present", () => {
     expect(
-      maxSeverity([
-        finding(Severity.SAFE),
-        finding(Severity.SUSPICIOUS),
-        finding(Severity.LOW),
-      ]),
+      maxSeverity([finding(Severity.SAFE), finding(Severity.SUSPICIOUS), finding(Severity.LOW)]),
     ).toBe(Severity.SUSPICIOUS);
   });
 
   it("returns LOW when only SAFE and LOW present", () => {
-    expect(
-      maxSeverity([finding(Severity.SAFE), finding(Severity.LOW)]),
-    ).toBe(Severity.LOW);
+    expect(maxSeverity([finding(Severity.SAFE), finding(Severity.LOW)])).toBe(Severity.LOW);
   });
 
   it("returns SAFE for single SAFE finding", () => {
@@ -189,7 +186,9 @@ describe("runRuleEngine", () => {
       filePath: "removal.test.ts",
       beforeContent: before,
       afterContent: after,
-      config: defineConfig({ rules: { assertionRemoved: Severity.SUSPICIOUS } }),
+      config: defineConfig({
+        rules: { assertionRemoved: Severity.SUSPICIOUS },
+      }),
     });
 
     expect(overrideResult.findings[0].severity).toBe(Severity.SUSPICIOUS);
@@ -214,13 +213,11 @@ describe("runRuleEngine", () => {
       beforeContent: before,
       afterContent: after,
       config: defineConfig({
-        rules: { matcherTransitions: { toBe: { toEqual: "LOW" } } },
+        rules: { matcherTransitions: { "toBe->toEqual": Severity.LOW } },
       }),
     });
 
-    const matcherFindings = result.findings.filter(
-      (f) => f.rule === "matcher-transition",
-    );
+    const matcherFindings = result.findings.filter((f) => f.rule === "matcher-transition");
     expect(matcherFindings[0].severity).toBe(Severity.LOW);
   });
 
@@ -245,9 +242,7 @@ describe("runRuleEngine", () => {
       config: defineConfig({ rules: { skipAnnotation: Severity.SUSPICIOUS } }),
     });
 
-    const skipFindings = result.findings.filter((f) =>
-      f.rule.startsWith("skip-detector"),
-    );
+    const skipFindings = result.findings.filter((f) => f.rule.startsWith("skip-detector"));
     expect(skipFindings[0].severity).toBe(Severity.SUSPICIOUS);
   });
 
@@ -291,10 +286,30 @@ describe("runRuleEngine", () => {
           newCount: 3,
           header: "",
           lines: [
-            { type: "context", content: "exports[`app renders`] = `", oldLineNumber: 1, newLineNumber: 1 },
-            { type: "removed", content: "<div>old</div>", oldLineNumber: 2, newLineNumber: null },
-            { type: "added", content: "<div>new</div>", oldLineNumber: null, newLineNumber: 2 },
-            { type: "context", content: "`;", oldLineNumber: 3, newLineNumber: 3 },
+            {
+              type: "context",
+              content: "exports[`app renders`] = `",
+              oldLineNumber: 1,
+              newLineNumber: 1,
+            },
+            {
+              type: "removed",
+              content: "<div>old</div>",
+              oldLineNumber: 2,
+              newLineNumber: null,
+            },
+            {
+              type: "added",
+              content: "<div>new</div>",
+              oldLineNumber: null,
+              newLineNumber: 2,
+            },
+            {
+              type: "context",
+              content: "`;",
+              oldLineNumber: 3,
+              newLineNumber: 3,
+            },
           ],
         },
       ],
@@ -461,9 +476,9 @@ describe("runRuleEngine", () => {
     expect(
       matcherFindings.some((f) => f.message.includes("auth > login > validates credentials")),
     ).toBe(true);
-    expect(
-      matcherFindings.some((f) => f.message.includes("auth > logout > clears session")),
-    ).toBe(true);
+    expect(matcherFindings.some((f) => f.message.includes("auth > logout > clears session"))).toBe(
+      true,
+    );
     expect(result.overallSeverity).toBe(Severity.CRITICAL);
   });
 

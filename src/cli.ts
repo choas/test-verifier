@@ -54,7 +54,8 @@ const NEEDS_FIX_USAGE = `Usage: test-verifier needs-fix <finding-id> --rationale
 const HISTORY_USAGE = `Usage: test-verifier history <test-file> [--function <name>]`;
 
 function levenshtein(a: string, b: string): number {
-  const m = a.length, n = b.length;
+  const m = a.length,
+    n = b.length;
   const dp: number[][] = Array.from({ length: m + 1 }, () => Array(n + 1).fill(0));
   for (let i = 0; i <= m; i++) dp[i][0] = i;
   for (let j = 0; j <= n; j++) dp[0][j] = j;
@@ -149,7 +150,7 @@ switch (command) {
 
   case "check": {
     const { check } = await import("./commands/check");
-    let checkFlags;
+    let checkFlags: ReturnType<typeof parseArgs>;
     try {
       checkFlags = parseArgs({
         args: Bun.argv.slice(3),
@@ -179,7 +180,7 @@ switch (command) {
   case "list": {
     const { list } = await import("./commands/list");
     const { StubStatusSchema } = await import("./types");
-    let listFlags;
+    let listFlags: ReturnType<typeof parseArgs>;
     try {
       listFlags = parseArgs({
         args: Bun.argv.slice(3),
@@ -210,7 +211,7 @@ switch (command) {
     }
     await list({
       status: validatedStatus,
-      all: listFlags.values.all ?? false,
+      all: !!listFlags.values.all,
     });
     break;
   }
@@ -292,7 +293,7 @@ switch (command) {
 
   case "test-llm": {
     const { testLlm } = await import("./commands/test-llm");
-    let testLlmFlags;
+    let testLlmFlags: ReturnType<typeof parseArgs>;
     try {
       testLlmFlags = parseArgs({
         args: Bun.argv.slice(3),

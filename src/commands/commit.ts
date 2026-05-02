@@ -1,9 +1,9 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { $ } from "bun";
-import { auditDir, listByStatus } from "../audit-folder";
+import { auditDir } from "../audit-folder";
 import { parseMarkdown } from "../markdown-reader";
-import type { Severity } from "../types";
+import type { Severity, StubStatus } from "../types";
 
 interface AuditChange {
   added: string[];
@@ -70,10 +70,7 @@ function categorizeByFolder(files: string[]): Record<string, string[]> {
   return result;
 }
 
-function buildCommitMessage(
-  changes: AuditChange,
-  summaries: FindingSummary[],
-): string {
+function buildCommitMessage(changes: AuditChange, summaries: FindingSummary[]): string {
   const parts: string[] = [];
   const allChanged = [...changes.added, ...changes.modified, ...changes.deleted];
 
@@ -150,11 +147,16 @@ function buildCommitMessage(
 
 function severityOrder(s: string): number {
   switch (s) {
-    case "CRITICAL": return 0;
-    case "SUSPICIOUS": return 1;
-    case "LOW": return 2;
-    case "SAFE": return 3;
-    default: return 4;
+    case "CRITICAL":
+      return 0;
+    case "SUSPICIOUS":
+      return 1;
+    case "LOW":
+      return 2;
+    case "SAFE":
+      return 3;
+    default:
+      return 4;
   }
 }
 
@@ -180,7 +182,10 @@ export async function commit(cwd: string = process.cwd()): Promise<void> {
   const message = buildCommitMessage(changes, summaries);
 
   const dir = auditDir(cwd);
-  const addResult = await $`git add ${dir} -- ':!*.sqlite' ':!*.sqlite-shm' ':!*.sqlite-wal'`.cwd(cwd).quiet().nothrow();
+  const addResult = await $`git add ${dir} -- ':!*.sqlite' ':!*.sqlite-shm' ':!*.sqlite-wal'`
+    .cwd(cwd)
+    .quiet()
+    .nothrow();
   if (addResult.exitCode !== 0) {
     console.error(`Failed to stage .test-verifier/: ${addResult.stderr.toString()}`);
     process.exit(1);
