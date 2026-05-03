@@ -1,12 +1,7 @@
 import { z } from "zod";
 import { Severity } from "./types";
 
-const severityEnum = z.enum([
-  Severity.SAFE,
-  Severity.LOW,
-  Severity.SUSPICIOUS,
-  Severity.CRITICAL,
-]);
+const severityEnum = z.enum([Severity.SAFE, Severity.LOW, Severity.SUSPICIOUS, Severity.CRITICAL]);
 
 const matcherTransitionsSchema = z.record(z.string(), severityEnum).default({
   "toBe->toEqual": Severity.SUSPICIOUS,
@@ -33,9 +28,7 @@ const snapshotInner = z.object({
   unpairedUpdate: severityEnum.default(Severity.CRITICAL),
   deletion: severityEnum.default(Severity.CRITICAL),
   maxDiffSizeForLLM: z.number().int().positive().default(10_000),
-  truncationStrategy: z
-    .enum(["head-tail", "sample", "summary"])
-    .default("head-tail"),
+  truncationStrategy: z.enum(["head-tail", "sample", "summary"]).default("head-tail"),
 });
 
 const rulesInner = z.object({
@@ -65,9 +58,7 @@ const policyInner = z.object({
 });
 
 const auditInner = z.object({
-  compactPeriod: z
-    .enum(["month", "quarter", "year", "never"])
-    .default("quarter"),
+  compactPeriod: z.enum(["month", "quarter", "year", "never"]).default("quarter"),
   cacheTtlDays: z.number().int().positive().default(90),
   cacheMaxEntries: z.number().int().positive().default(5000),
   archiveRetentionDays: z.number().int().positive().default(365),
@@ -78,9 +69,7 @@ const cryptoInner = z.object({
 });
 
 export const configSchema = z.object({
-  testGlobs: z
-    .array(z.string())
-    .default(["**/*.test.ts", "**/*.spec.ts", "**/*.test.svelte.ts"]),
+  testGlobs: z.array(z.string()).default(["**/*.test.ts", "**/*.spec.ts", "**/*.test.svelte.ts"]),
   excludeGlobs: z.array(z.string()).default(["**/node_modules/**"]),
   llm: llmInner.default(() => llmInner.parse({})),
   policy: policyInner.default(() => policyInner.parse({})),
@@ -102,9 +91,7 @@ export function configPath(cwd: string): string {
   return `${cwd}/${CONFIG_PATH}`;
 }
 
-export async function loadConfig(
-  cwd: string = process.cwd(),
-): Promise<TestVerifierConfig> {
+export async function loadConfig(cwd: string = process.cwd()): Promise<TestVerifierConfig> {
   const filepath = configPath(cwd);
   const file = Bun.file(filepath);
   if (await file.exists()) {

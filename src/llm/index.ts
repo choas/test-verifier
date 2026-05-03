@@ -10,9 +10,7 @@ export function createLlmClient(config: TestVerifierConfig): LlmClient {
     case "anthropic": {
       const apiKey = process.env[apiKeyEnv];
       if (!apiKey) {
-        throw new Error(
-          `Missing API key: set the ${apiKeyEnv} environment variable`,
-        );
+        throw new Error(`Missing API key: set the ${apiKeyEnv} environment variable`);
       }
       return new AnthropicClient({ model, timeoutMs, apiKey });
     }

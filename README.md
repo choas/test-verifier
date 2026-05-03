@@ -30,12 +30,12 @@ Push    -> enrich    -> fill in LLM analysis
 
 ## Severity Levels
 
-| Level | Meaning | Examples |
-|---|---|---|
-| SAFE | No risk | New tests, formatting, identifier renames |
-| LOW | Structural only | Splitting tests, moving between `describe` blocks |
-| SUSPICIOUS | Behavior changed | Expected value changes, matcher changes |
-| CRITICAL | Coverage reduced | Deleted tests, skipped tests, assertion removal |
+| Level      | Meaning          | Examples                                          |
+| ---------- | ---------------- | ------------------------------------------------- |
+| SAFE       | No risk          | New tests, formatting, identifier renames         |
+| LOW        | Structural only  | Splitting tests, moving between `describe` blocks |
+| SUSPICIOUS | Behavior changed | Expected value changes, matcher changes           |
+| CRITICAL   | Coverage reduced | Deleted tests, skipped tests, assertion removal   |
 
 By default, only `SAFE` findings are auto-approved. Everything else requires human review.
 
@@ -85,9 +85,9 @@ import { defineConfig } from "test-verifier";
 export default defineConfig({
   testGlobs: ["**/*.test.ts", "**/*.spec.ts"],
   llm: {
-    provider: "anthropic",       // or "ollama"
+    provider: "anthropic", // or "ollama"
     model: "claude-sonnet-4-7",
-    relatedProdLookback: 3,      // commits of production context to include
+    relatedProdLookback: 3, // commits of production context to include
   },
   policy: {
     autoApprove: ["SAFE"],

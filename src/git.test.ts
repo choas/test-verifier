@@ -23,22 +23,37 @@ beforeAll(async () => {
   await $`git config user.name "Test"`.cwd(repoDir).quiet();
 
   // Commit 1: prod file + test file
-  await Bun.write(join(repoDir, "src/utils.ts"), "export function add(a: number, b: number) { return a + b; }");
-  await Bun.write(join(repoDir, "src/utils.test.ts"), "test('add', () => expect(add(1,2)).toBe(3));");
+  await Bun.write(
+    join(repoDir, "src/utils.ts"),
+    "export function add(a: number, b: number) { return a + b; }",
+  );
+  await Bun.write(
+    join(repoDir, "src/utils.test.ts"),
+    "test('add', () => expect(add(1,2)).toBe(3));",
+  );
   await $`git add -A`.cwd(repoDir).quiet();
   await $`git commit -m "initial commit"`.cwd(repoDir).quiet();
   firstSha = (await $`git rev-parse HEAD`.cwd(repoDir).quiet()).stdout.toString().trim();
 
   // Commit 2: modify prod file
-  await Bun.write(join(repoDir, "src/utils.ts"), "export function add(a: number, b: number) { return a + b; }\nexport function sub(a: number, b: number) { return a - b; }");
+  await Bun.write(
+    join(repoDir, "src/utils.ts"),
+    "export function add(a: number, b: number) { return a + b; }\nexport function sub(a: number, b: number) { return a - b; }",
+  );
   await Bun.write(join(repoDir, "src/helpers.ts"), "export const VERSION = '1.0';");
   await $`git add -A`.cwd(repoDir).quiet();
   await $`git commit -m "add sub and helpers"`.cwd(repoDir).quiet();
   secondSha = (await $`git rev-parse HEAD`.cwd(repoDir).quiet()).stdout.toString().trim();
 
   // Commit 3: modify test + prod together
-  await Bun.write(join(repoDir, "src/utils.ts"), "export function add(a: number, b: number) { return a + b; }\nexport function sub(a: number, b: number) { return a - b; }\nexport function mul(a: number, b: number) { return a * b; }");
-  await Bun.write(join(repoDir, "src/utils.test.ts"), "test('add', () => expect(add(1,2)).toBe(3));\ntest('mul', () => expect(mul(2,3)).toBe(6));");
+  await Bun.write(
+    join(repoDir, "src/utils.ts"),
+    "export function add(a: number, b: number) { return a + b; }\nexport function sub(a: number, b: number) { return a - b; }\nexport function mul(a: number, b: number) { return a * b; }",
+  );
+  await Bun.write(
+    join(repoDir, "src/utils.test.ts"),
+    "test('add', () => expect(add(1,2)).toBe(3));\ntest('mul', () => expect(mul(2,3)).toBe(6));",
+  );
   await Bun.write(join(repoDir, "src/config.ts"), "export const CONFIG = {};");
   await $`git add -A`.cwd(repoDir).quiet();
   await $`git commit -m "add mul with test and config"`.cwd(repoDir).quiet();

@@ -5,15 +5,16 @@ export async function getGitEmail(cwd: string): Promise<string> {
   const result = await $`git config user.email`.cwd(cwd).quiet().nothrow();
   const email = result.stdout.toString().trim();
   if (result.exitCode !== 0 || !email) {
-    throw new Error(
-      "git user.email is not configured. Run: git config user.email you@example.com",
-    );
+    throw new Error("git user.email is not configured. Run: git config user.email you@example.com");
   }
   return email;
 }
 
 export async function getCurrentCommitSha(cwd?: string): Promise<string | null> {
-  const result = await $`git rev-parse HEAD`.cwd(cwd ?? ".").quiet().nothrow();
+  const result = await $`git rev-parse HEAD`
+    .cwd(cwd ?? ".")
+    .quiet()
+    .nothrow();
   if (result.exitCode !== 0) {
     return null;
   }
@@ -55,11 +56,10 @@ export async function getPriorCommitsDiff(
   const dir = cwd ?? ".";
 
   const startRef = `${commitSha}~1`;
-  const result =
-    await $`git log -n ${lookback} -p --format= ${startRef} -- ${prodFiles}`
-      .cwd(dir)
-      .quiet()
-      .nothrow();
+  const result = await $`git log -n ${lookback} -p --format= ${startRef} -- ${prodFiles}`
+    .cwd(dir)
+    .quiet()
+    .nothrow();
   if (result.exitCode !== 0) return "";
 
   return result.stdout.toString().trim();
@@ -80,10 +80,7 @@ export async function getDiffBetweenCommits(
   return result.stdout.toString().trim();
 }
 
-export async function getStagedDiff(
-  globs: string[],
-  cwd?: string,
-): Promise<string> {
+export async function getStagedDiff(globs: string[], cwd?: string): Promise<string> {
   const dir = cwd ?? ".";
   const args = globs.length > 0 ? ["--", ...globs] : [];
   const result = await $`git diff --cached HEAD ${args}`.cwd(dir).quiet().nothrow();
@@ -91,10 +88,7 @@ export async function getStagedDiff(
   return result.stdout.toString().trim();
 }
 
-export async function getUncommittedDiff(
-  globs: string[],
-  cwd?: string,
-): Promise<string> {
+export async function getUncommittedDiff(globs: string[], cwd?: string): Promise<string> {
   const dir = cwd ?? ".";
   const args = globs.length > 0 ? ["--", ...globs] : [];
   const result = await $`git diff HEAD ${args}`.cwd(dir).quiet().nothrow();
@@ -102,10 +96,7 @@ export async function getUncommittedDiff(
   return result.stdout.toString().trim();
 }
 
-export async function getFileFromIndex(
-  filePath: string,
-  cwd?: string,
-): Promise<string> {
+export async function getFileFromIndex(filePath: string, cwd?: string): Promise<string> {
   assertSafeRelativePath(filePath);
   const dir = cwd ?? ".";
   const result = await $`git show :${filePath}`.cwd(dir).quiet().nothrow();

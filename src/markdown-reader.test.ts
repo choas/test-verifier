@@ -123,7 +123,10 @@ describe("parseMarkdown", () => {
   describe("findings roundtrip", () => {
     it("parses findings with severity and message", () => {
       const findings = [
-        makeFinding({ severity: Severity.CRITICAL, message: "`it.skip` introduced on line 42" }),
+        makeFinding({
+          severity: Severity.CRITICAL,
+          message: "`it.skip` introduced on line 42",
+        }),
         makeFinding({
           rule: "assertion-removal",
           severity: Severity.SUSPICIOUS,
@@ -187,9 +190,7 @@ describe("parseMarkdown", () => {
   describe("analysis and decision sections", () => {
     it("returns pending placeholder for analysis", () => {
       const parsed = roundtrip(makeResult());
-      expect(parsed.analysis).toBe(
-        "(Pending LLM enrichment. Run `bunx test-verifier enrich`.)",
-      );
+      expect(parsed.analysis).toBe("(Pending LLM enrichment. Run `bunx test-verifier enrich`.)");
     });
 
     it("returns pending placeholder for decision", () => {
@@ -353,7 +354,10 @@ None.
         }),
       ];
 
-      const result = makeResult({ findings, overallSeverity: Severity.CRITICAL });
+      const result = makeResult({
+        findings,
+        overallSeverity: Severity.CRITICAL,
+      });
       const written = generateStubMarkdown({
         ruleResult: result,
         commit: COMMIT,

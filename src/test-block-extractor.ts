@@ -22,7 +22,10 @@ export interface TestBlock {
 const TEST_CALL_NAMES = new Set(["it", "test", "describe"]);
 
 export function extractTestBlocks(source: string, filePath = "virtual.test.ts"): TestBlock[] {
-  const project = new Project({ useInMemoryFileSystem: true, compilerOptions: { allowJs: true } });
+  const project = new Project({
+    useInMemoryFileSystem: true,
+    compilerOptions: { allowJs: true },
+  });
   const sourceFile = project.createSourceFile(filePath, source);
   return extractFromNode(sourceFile);
 }
@@ -127,7 +130,9 @@ function resolveCallInfo(call: CallExpression): CallInfo {
       info.name = obj.getText();
       if (prop === "skip") info.skip = true;
       else if (prop === "todo") info.todo = true;
-      else if (prop === "only") { /* treated as normal */ }
+      else if (prop === "only") {
+        /* treated as normal */
+      }
       return info;
     }
 
@@ -184,9 +189,10 @@ function parseTestCall(call: CallExpression): TestBlock | null {
   const assertions = type === "describe" ? [] : collectAssertions(bodyArg);
   const children = type === "describe" ? extractFromNode(bodyArg) : [];
 
-  const bodyText = bodyArg.isKind(SyntaxKind.ArrowFunction) || bodyArg.isKind(SyntaxKind.FunctionExpression)
-    ? bodyArg.getText()
-    : bodyArg.getText();
+  const bodyText =
+    bodyArg.isKind(SyntaxKind.ArrowFunction) || bodyArg.isKind(SyntaxKind.FunctionExpression)
+      ? bodyArg.getText()
+      : bodyArg.getText();
 
   return {
     type,
@@ -265,7 +271,10 @@ function resolveExpectChain(call: CallExpression): string | null {
         const inner = obj.getExpression();
         if (inner.isKind(SyntaxKind.PropertyAccessExpression)) {
           const innerProp = inner.getName();
-          if ((innerProp === "resolves" || innerProp === "rejects") && isExpectCall(inner.getExpression())) {
+          if (
+            (innerProp === "resolves" || innerProp === "rejects") &&
+            isExpectCall(inner.getExpression())
+          ) {
             return `${innerProp}.not.${propName}`;
           }
         }

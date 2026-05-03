@@ -12,7 +12,12 @@ export type LlmResponse = z.infer<typeof LlmResponseSchema>;
 export interface LlmPromptInput {
   testFilePath: string;
   testDiff: string;
-  ruleFindings: { rule: string; severity: string; message: string; line: number }[];
+  ruleFindings: {
+    rule: string;
+    severity: string;
+    message: string;
+    line: number;
+  }[];
   relatedProdDiffs: string;
 }
 

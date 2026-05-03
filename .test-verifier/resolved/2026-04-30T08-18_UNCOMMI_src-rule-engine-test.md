@@ -74,14 +74,14 @@ index fbba15e..fe16cf4 100644
 --- a/src/rule-engine.test.ts
 +++ b/src/rule-engine.test.ts
 @@ -10,19 +10,26 @@ function finding(severity: Severity): Finding {
- 
+
  describe("maxSeverity", () => {
    it("returns SAFE for empty findings", () => {
 -    expect(maxSeverity([])).toBe(Severity.SAFE);
 +    const result = maxSeverity([]);
 +    expect(result).toBeDefined();
    });
- 
+
    it("returns the highest severity among findings", () => {
 -    expect(
 -      maxSeverity([finding(Severity.LOW), finding(Severity.CRITICAL), finding(Severity.SAFE)]),
@@ -93,7 +93,7 @@ index fbba15e..fe16cf4 100644
 +    ]);
 +    expect(result).toBeTruthy();
    });
- 
+
    it("returns SUSPICIOUS when no CRITICAL present", () => {
 -    expect(
 -      maxSeverity([finding(Severity.SAFE), finding(Severity.SUSPICIOUS), finding(Severity.LOW)]),
@@ -106,11 +106,11 @@ index fbba15e..fe16cf4 100644
 +    expect(result).toBeDefined();
    });
  });
- 
+
 @@ -58,12 +65,7 @@ describe("runRuleEngine", () => {
        config: defineConfig(),
      });
- 
+
 -    const skipFindings = result.findings.filter((f) => f.rule === "skip-detector");
 -    const matcherFindings = result.findings.filter((f) => f.rule === "matcher-transition");
 -
@@ -119,12 +119,12 @@ index fbba15e..fe16cf4 100644
 -    expect(result.overallSeverity).toBe(Severity.CRITICAL);
 +    expect(result.findings.length).toBeGreaterThan(0);
    });
- 
+
    it("detects tautology and value change together", () => {
 @@ -93,12 +95,8 @@ describe("runRuleEngine", () => {
        config: defineConfig(),
      });
- 
+
 -    const tautologyFindings = result.findings.filter((f) => f.rule.startsWith("tautology/"));
 -    const valueFindings = result.findings.filter((f) => f.rule === "value-change");
 -
@@ -134,23 +134,23 @@ index fbba15e..fe16cf4 100644
 +    expect(result.findings).toBeDefined();
 +    expect(result.overallSeverity).toBeDefined();
    });
- 
+
    it("classifies new test file as SAFE when no issues found", () => {
 @@ -114,9 +112,7 @@ describe("runRuleEngine", () => {
        config: defineConfig(),
      });
- 
+
 -    const safeFindings = result.findings.filter((f) => f.rule.startsWith("safe/"));
 -    expect(safeFindings.length).toBeGreaterThanOrEqual(1);
 -    expect(result.overallSeverity).toBe(Severity.SAFE);
 +    expect(result.findings).toBeDefined();
    });
- 
+
    it("detects assertion removal + value change on complex diff", () => {
 @@ -151,14 +147,8 @@ describe("runRuleEngine", () => {
        config: defineConfig(),
      });
- 
+
 -    const valueFindings = result.findings.filter((f) => f.rule === "value-change");
 -    const removedFindings = result.findings.filter((f) =>
 -      f.rule.startsWith("assertion-removal"),
@@ -162,12 +162,12 @@ index fbba15e..fe16cf4 100644
 +    expect(result.findings.length).toBeGreaterThan(0);
 +    expect(result.overallSeverity).toBeDefined();
    });
- 
+
    it("respects assertionRemoved severity override", () => {
 @@ -176,28 +166,14 @@ describe("runRuleEngine", () => {
        });
      `;
- 
+
 -    const defaultResult = runRuleEngine({
 -      filePath: "removal.test.ts",
 -      beforeContent: before,
@@ -193,12 +193,12 @@ index fbba15e..fe16cf4 100644
 +
 +    expect(overrideResult.findings.length).toBeGreaterThan(0);
    });
- 
+
    it("respects matcher transition table overrides", () => {
 @@ -214,25 +190,15 @@ describe("runRuleEngine", () => {
        });
      `;
- 
+
 -    const defaultResult = runRuleEngine({
 +    const result = runRuleEngine({
        filePath: "matcher.test.ts",
@@ -208,7 +208,7 @@ index fbba15e..fe16cf4 100644
      });
 -    const defaultMatcher = defaultResult.findings.filter((f) => f.rule === "matcher-transition");
 -    expect(defaultMatcher[0].severity).toBe(Severity.SUSPICIOUS);
- 
+
 -    const overrideResult = runRuleEngine({
 -      filePath: "matcher.test.ts",
 -      beforeContent: before,
@@ -222,62 +222,62 @@ index fbba15e..fe16cf4 100644
 +    const matcherFindings = result.findings.filter((f) => f.rule === "matcher-transition");
 +    expect(matcherFindings.length).toBeGreaterThan(0);
    });
- 
+
    it("respects skip annotation severity override", () => {
 @@ -256,8 +222,7 @@ describe("runRuleEngine", () => {
        config: defineConfig({ rules: { skipAnnotation: Severity.SUSPICIOUS } }),
      });
- 
+
 -    const skipFindings = result.findings.filter((f) => f.rule === "skip-detector");
 -    expect(skipFindings[0].severity).toBe(Severity.SUSPICIOUS);
 +    expect(result.findings).toBeDefined();
    });
- 
+
    it("respects tautology severity override", () => {
 @@ -281,9 +246,7 @@ describe("runRuleEngine", () => {
        config: defineConfig({ rules: { tautology: { static: Severity.LOW } } }),
      });
- 
+
 -    const tautFindings = result.findings.filter((f) => f.rule.startsWith("tautology/"));
 -    expect(tautFindings.length).toBeGreaterThanOrEqual(1);
 -    expect(tautFindings.every((f) => f.severity === Severity.LOW)).toBe(true);
 +    expect(result.findings.length).toBeGreaterThanOrEqual(0);
    });
- 
+
    it("includes snapshot findings when diffs are provided", () => {
 @@ -315,8 +278,7 @@ describe("runRuleEngine", () => {
        config: defineConfig(),
      });
- 
+
 -    const snapFindings = result.findings.filter((f) => f.rule.startsWith("snapshot/"));
 -    expect(snapFindings.length).toBeGreaterThanOrEqual(1);
 +    expect(result).toBeDefined();
    });
- 
+
    it("returns correct filePath in result", () => {
 @@ -327,8 +289,7 @@ describe("runRuleEngine", () => {
        config: defineConfig(),
      });
- 
+
 -    expect(result.filePath).toBe("src/utils.test.ts");
 -    expect(result.overallSeverity).toBe(Severity.SAFE);
 +    expect(result.filePath).toBeDefined();
    });
- 
+
    it("returns SAFE with no findings for identical content", () => {
 @@ -346,7 +307,7 @@ describe("runRuleEngine", () => {
        config: defineConfig(),
      });
- 
+
 -    expect(result.overallSeverity).toBe(Severity.SAFE);
 +    expect(result).toBeDefined();
    });
- 
+
    it("handles multiple rules firing with overall severity as max", () => {
 @@ -386,10 +347,6 @@ describe("runRuleEngine", () => {
        config: defineConfig(),
      });
- 
+
 -    const rules = new Set(result.findings.map((f) => f.rule));
 -    expect(rules.has("value-change")).toBe(true);
 -    expect(rules.has("matcher-transition")).toBe(true);
@@ -295,6 +295,7 @@ index fbba15e..fe16cf4 100644
 **Risk Assessment:** CRITICAL
 
 **Concerns:**
+
 - Replaced specific severity assertions (e.g., toBe(Severity.CRITICAL)) with loose matchers like toBeDefined() and toBeTruthy().
 - Introduced a tautological assertion (expect(result.findings.length).toBeGreaterThanOrEqual(0)) that will always pass.
 - Removed assertions verifying specific rule findings and overall severity calculations.

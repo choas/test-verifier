@@ -41,7 +41,10 @@ describe("AnalysisCache", () => {
     const key = AnalysisCache.computeKey("diff1", "prod1", "model-v1");
     cache.set(key, SAMPLE_RESPONSE, "model-v1");
 
-    const updated: LlmResponse = { ...SAMPLE_RESPONSE, summary: "Updated analysis" };
+    const updated: LlmResponse = {
+      ...SAMPLE_RESPONSE,
+      summary: "Updated analysis",
+    };
     cache.set(key, updated, "model-v1");
 
     const result = cache.get(key);
@@ -94,7 +97,10 @@ describe("AnalysisCache", () => {
       "const greeting = 'Привет'",
       "model-v1",
     );
-    const response: LlmResponse = { ...SAMPLE_RESPONSE, summary: "Non-ASCII test" };
+    const response: LlmResponse = {
+      ...SAMPLE_RESPONSE,
+      summary: "Non-ASCII test",
+    };
     cache.set(key, response, "model-v1");
     expect(cache.get(key)?.summary).toBe("Non-ASCII test");
   });

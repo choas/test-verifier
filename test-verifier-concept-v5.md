@@ -113,20 +113,20 @@ PHASE 2 (pre-push or on-demand)
 
 Default values; data, configurable.
 
-| from                       | to                  | severity     |
-|----------------------------|---------------------|--------------|
-| `toBe`                     | `toEqual`           | SUSPICIOUS   |
-| `toBe`                     | `toBeDefined`       | CRITICAL     |
-| `toBe`                     | `toBeTruthy`        | CRITICAL     |
-| `toBe`                     | `toBeFalsy`         | CRITICAL     |
-| `toEqual`                  | `toMatchObject`     | SUSPICIOUS   |
-| `toEqual`                  | `toBeDefined`       | CRITICAL     |
-| `toStrictEqual`            | `toEqual`           | SUSPICIOUS   |
-| `toStrictEqual`            | `toMatchObject`     | CRITICAL     |
-| `toHaveLength`             | `toBeDefined`       | CRITICAL     |
-| `toThrow`                  | `not.toThrow`       | CRITICAL     |
-| `toHaveBeenCalledTimes`    | `toHaveBeenCalled`  | SUSPICIOUS   |
-| any matcher                | removed entirely    | CRITICAL     |
+| from                    | to                 | severity   |
+| ----------------------- | ------------------ | ---------- |
+| `toBe`                  | `toEqual`          | SUSPICIOUS |
+| `toBe`                  | `toBeDefined`      | CRITICAL   |
+| `toBe`                  | `toBeTruthy`       | CRITICAL   |
+| `toBe`                  | `toBeFalsy`        | CRITICAL   |
+| `toEqual`               | `toMatchObject`    | SUSPICIOUS |
+| `toEqual`               | `toBeDefined`      | CRITICAL   |
+| `toStrictEqual`         | `toEqual`          | SUSPICIOUS |
+| `toStrictEqual`         | `toMatchObject`    | CRITICAL   |
+| `toHaveLength`          | `toBeDefined`      | CRITICAL   |
+| `toThrow`               | `not.toThrow`      | CRITICAL   |
+| `toHaveBeenCalledTimes` | `toHaveBeenCalled` | SUSPICIOUS |
+| any matcher             | removed entirely   | CRITICAL   |
 
 ## 6. Tautology Detector
 
@@ -142,12 +142,12 @@ LLM-assisted check, escalated to SUSPICIOUS minimum: the model is asked whether 
 
 ## 7. Snapshot Test Handling
 
-| condition                                          | severity     |
-|----------------------------------------------------|--------------|
-| inline snapshot literal change                     | SUSPICIOUS   |
-| `.snap` changed, paired test code also changed     | SUSPICIOUS   |
-| `.snap` changed, no test code change               | CRITICAL     |
-| `.snap` deleted entirely                           | CRITICAL     |
+| condition                                      | severity   |
+| ---------------------------------------------- | ---------- |
+| inline snapshot literal change                 | SUSPICIOUS |
+| `.snap` changed, paired test code also changed | SUSPICIOUS |
+| `.snap` changed, no test code change           | CRITICAL   |
+| `.snap` deleted entirely                       | CRITICAL   |
 
 Size-aware truncation for large snapshots: the LLM receives at most `maxDiffSizeForLLM` bytes of snapshot diff (default 10KB), with the human reviewer pointed at the full snapshot file path. Truncation strategy is configurable: `head-tail` (first 4KB + last 4KB), `sample` (random hunks), or `summary` (structured field-level rollup).
 
@@ -207,7 +207,7 @@ The audit trail is a folder of markdown files committed to the repo. Granularity
 
 Stub state (after pre-commit, before enrichment):
 
-```markdown
+````markdown
 ---
 id: tv_2026-04-29T14-21_abc1234_auth-validate-test
 created_at: 2026-04-29T14:21:00Z
@@ -236,13 +236,15 @@ generator_signature: ed25519:...
 
 ​```diff
 -it('rejects expired tokens', async () => {
--  const token = createExpiredToken()
--  expect(validateExpiry(token)).toBe(false)
--})
-+it.skip('rejects expired tokens', async () => {
-+  const token = createExpiredToken()
-+})
-​```
+
+- const token = createExpiredToken()
+- expect(validateExpiry(token)).toBe(false)
+  -})
+  +it.skip('rejects expired tokens', async () => {
+
+* const token = createExpiredToken()
+  +})
+  ​```
 
 ## Analysis
 
@@ -251,7 +253,7 @@ generator_signature: ed25519:...
 ## Decision
 
 (Empty until enrichment is complete and a human approves or rejects.)
-```
+````
 
 Enriched state (after `enrich`): the front matter flips `llm_enriched: true`, `llm_model: claude-sonnet-4-7` is added, and the Analysis section is filled in with summary, detail, and concerns. The Decision section is still empty until a human acts.
 
@@ -337,58 +339,58 @@ For teams already using GPG-signed commits, `crypto.signing: 'gpg'` delegates to
 
 ```ts
 // test-verifier.config.ts
-import { defineConfig } from '@yourorg/test-verifier'
+import { defineConfig } from "@yourorg/test-verifier";
 
 export default defineConfig({
-  testGlobs: ['**/*.test.ts', '**/*.spec.ts', '**/*.test.svelte.ts'],
-  excludeGlobs: ['**/node_modules/**'],
+  testGlobs: ["**/*.test.ts", "**/*.spec.ts", "**/*.test.svelte.ts"],
+  excludeGlobs: ["**/node_modules/**"],
 
   llm: {
-    model: 'claude-sonnet-4-7',
+    model: "claude-sonnet-4-7",
     timeoutMs: 30_000,
-    apiKeyEnv: 'ANTHROPIC_API_KEY',
-    relatedProdLookback: 0,             // commits to look back for prod context
+    apiKeyEnv: "ANTHROPIC_API_KEY",
+    relatedProdLookback: 0, // commits to look back for prod context
   },
 
   // Project rule: which severities skip the human review queue.
   policy: {
-    autoApprove: ['SAFE'],              // ['SAFE'] | ['SAFE', 'LOW'] | []
-    requireHumanFor: ['LOW', 'SUSPICIOUS', 'CRITICAL'],
+    autoApprove: ["SAFE"], // ['SAFE'] | ['SAFE', 'LOW'] | []
+    requireHumanFor: ["LOW", "SUSPICIOUS", "CRITICAL"],
     blockPushIfPending: true,
     blockMergeIfRejected: true,
   },
 
   rules: {
     matcherTransitions: {
-      'toBe->toEqual': 'SUSPICIOUS',
+      "toBe->toEqual": "SUSPICIOUS",
       // override or extend the default table here
     },
     tautology: {
-      static: 'CRITICAL',
-      llmDetected: 'SUSPICIOUS',
+      static: "CRITICAL",
+      llmDetected: "SUSPICIOUS",
     },
     snapshot: {
-      inline: 'SUSPICIOUS',
-      pairedUpdate: 'SUSPICIOUS',
-      unpairedUpdate: 'CRITICAL',
-      deletion: 'CRITICAL',
+      inline: "SUSPICIOUS",
+      pairedUpdate: "SUSPICIOUS",
+      unpairedUpdate: "CRITICAL",
+      deletion: "CRITICAL",
       maxDiffSizeForLLM: 10_000,
-      truncationStrategy: 'head-tail',
+      truncationStrategy: "head-tail",
     },
-    skipAnnotation: 'CRITICAL',
-    todoAnnotation: 'CRITICAL',
-    assertionRemoved: 'CRITICAL',
+    skipAnnotation: "CRITICAL",
+    todoAnnotation: "CRITICAL",
+    assertionRemoved: "CRITICAL",
   },
 
   audit: {
-    folder: '.test-verifier',
-    compactPeriod: 'quarter',
+    folder: ".test-verifier",
+    compactPeriod: "quarter",
   },
 
   crypto: {
-    signing: 'ed25519',                 // 'ed25519' | 'gpg'
+    signing: "ed25519", // 'ed25519' | 'gpg'
   },
-})
+});
 ```
 
 ## 12. Integration Layers

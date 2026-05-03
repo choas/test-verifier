@@ -45,11 +45,7 @@ export function runRuleEngine(input: RuleEngineInput): RuleEngineResult {
   const { filePath, beforeContent, afterContent, diffs, config } = input;
   const findings: Finding[] = [];
 
-  const { before, after } = extractTestBlocksPair(
-    beforeContent,
-    afterContent,
-    filePath,
-  );
+  const { before, after } = extractTestBlocksPair(beforeContent, afterContent, filePath);
 
   findings.push(
     ...classifySafeChanges({
@@ -77,9 +73,7 @@ export function runRuleEngine(input: RuleEngineInput): RuleEngineResult {
     findings.push(f);
   }
 
-  findings.push(
-    ...detectMatcherTransitions(before, after, config.rules.matcherTransitions),
-  );
+  findings.push(...detectMatcherTransitions(before, after, config.rules.matcherTransitions));
 
   if (afterContent.trim()) {
     findings.push(

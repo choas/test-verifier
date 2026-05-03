@@ -22,25 +22,29 @@ export function classifySafeChanges(input: SafeClassifierInput): Finding[] {
   if (!afterSource.trim()) return [];
 
   if (isFormattingOnly(beforeSource, afterSource)) {
-    return [{
-      rule: "safe/formatting-only",
-      severity: Severity.SAFE,
-      line: 1,
-      message: "Changes are formatting-only (whitespace, semicolons, trailing commas)",
-      before: "",
-      after: "",
-    }];
+    return [
+      {
+        rule: "safe/formatting-only",
+        severity: Severity.SAFE,
+        line: 1,
+        message: "Changes are formatting-only (whitespace, semicolons, trailing commas)",
+        before: "",
+        after: "",
+      },
+    ];
   }
 
   if (isTypeAnnotationOnly(beforeSource, afterSource)) {
-    return [{
-      rule: "safe/type-annotation-only",
-      severity: Severity.SAFE,
-      line: 1,
-      message: "Changes only add or modify type annotations",
-      before: "",
-      after: "",
-    }];
+    return [
+      {
+        rule: "safe/type-annotation-only",
+        severity: Severity.SAFE,
+        line: 1,
+        message: "Changes only add or modify type annotations",
+        before: "",
+        after: "",
+      },
+    ];
   }
 
   const renameResult = detectIdentifierRename(beforeSource, afterSource);
@@ -55,14 +59,16 @@ function classifyNewTestFile(source: string, filePath?: string): Finding[] {
   const blocks = extractTestBlocks(source, filePath);
   if (blocks.length === 0) return [];
 
-  return [{
-    rule: "safe/new-test-file",
-    severity: Severity.SAFE,
-    line: 1,
-    message: `New test file with ${countTests(blocks)} test(s)`,
-    before: "",
-    after: "",
-  }];
+  return [
+    {
+      rule: "safe/new-test-file",
+      severity: Severity.SAFE,
+      line: 1,
+      message: `New test file with ${countTests(blocks)} test(s)`,
+      before: "",
+      after: "",
+    },
+  ];
 }
 
 function countTests(blocks: TestBlock[]): number {
@@ -150,10 +156,7 @@ function detectIdentifierRename(before: string, after: string): Finding | null {
     if (appearsInString(before, oldName)) return null;
   }
 
-  const transformed = before.replace(
-    new RegExp(ID_RE.source, "g"),
-    (m) => renameMap.get(m) ?? m,
-  );
+  const transformed = before.replace(new RegExp(ID_RE.source, "g"), (m) => renameMap.get(m) ?? m);
   if (transformed !== after) return null;
 
   const renames = [...renameMap.entries()];
@@ -212,8 +215,14 @@ function normalizeAssertionText(text: string): string {
 
 function isAdditionOnly(before: string, after: string): boolean {
   const norm = (s: string) => s.replace(/\s+/g, " ").trim();
-  const beforeLines = before.split("\n").map(norm).filter((l) => l);
-  const afterLines = after.split("\n").map(norm).filter((l) => l);
+  const beforeLines = before
+    .split("\n")
+    .map(norm)
+    .filter((l) => l);
+  const afterLines = after
+    .split("\n")
+    .map(norm)
+    .filter((l) => l);
 
   let j = 0;
   for (const bLine of beforeLines) {
@@ -254,16 +263,12 @@ function classifyTestBlockChanges(input: SafeClassifierInput): Finding[] {
     const newTest = afterByName.get(oldTest.qualifiedName);
     if (!newTest) continue;
 
-    const newAssertionSet = new Set(
-      newTest.assertions.map((a) => normalizeAssertionText(a.text)),
-    );
+    const newAssertionSet = new Set(newTest.assertions.map((a) => normalizeAssertionText(a.text)));
     for (const a of oldTest.assertions) {
       if (!newAssertionSet.has(normalizeAssertionText(a.text))) return [];
     }
 
-    const oldAssertionSet = new Set(
-      oldTest.assertions.map((a) => normalizeAssertionText(a.text)),
-    );
+    const oldAssertionSet = new Set(oldTest.assertions.map((a) => normalizeAssertionText(a.text)));
     if (newTest.assertions.some((a) => !oldAssertionSet.has(normalizeAssertionText(a.text)))) {
       hasNewAssertions = true;
     }

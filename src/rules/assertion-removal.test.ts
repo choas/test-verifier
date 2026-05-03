@@ -9,7 +9,10 @@ test('adds', () => {
   expect(add(1, 2)).toBe(3);
 });
 `;
-    const findings = detectAssertionRemoval({ beforeSource: source, afterSource: source });
+    const findings = detectAssertionRemoval({
+      beforeSource: source,
+      afterSource: source,
+    });
     expect(findings).toHaveLength(0);
   });
 
@@ -25,7 +28,10 @@ test('checks', () => {
   expect(result.name).toBe('test');
 });
 `;
-    const findings = detectAssertionRemoval({ beforeSource: before, afterSource: after });
+    const findings = detectAssertionRemoval({
+      beforeSource: before,
+      afterSource: after,
+    });
     expect(findings).toHaveLength(0);
   });
 
@@ -42,7 +48,10 @@ test('checks', () => {
   expect(result).toBeDefined();
 });
 `;
-    const findings = detectAssertionRemoval({ beforeSource: before, afterSource: after });
+    const findings = detectAssertionRemoval({
+      beforeSource: before,
+      afterSource: after,
+    });
     expect(findings).toHaveLength(2);
     expect(findings[0].rule).toBe("assertion-removal/assertion-removed");
     expect(findings[0].severity).toBe(Severity.CRITICAL);
@@ -61,7 +70,10 @@ test('two', () => { expect(2).toBe(2); });
     const after = `
 test('one', () => { expect(1).toBe(1); });
 `;
-    const findings = detectAssertionRemoval({ beforeSource: before, afterSource: after });
+    const findings = detectAssertionRemoval({
+      beforeSource: before,
+      afterSource: after,
+    });
     expect(findings).toHaveLength(1);
     expect(findings[0].rule).toBe("assertion-removal/test-deleted");
     expect(findings[0].severity).toBe(Severity.CRITICAL);
@@ -83,7 +95,10 @@ test('name check', () => {
   expect(result.name).toBe('test');
 });
 `;
-    const findings = detectAssertionRemoval({ beforeSource: before, afterSource: after });
+    const findings = detectAssertionRemoval({
+      beforeSource: before,
+      afterSource: after,
+    });
     expect(findings).toHaveLength(1);
     expect(findings[0].rule).toBe("assertion-removal/assertion-moved");
     expect(findings[0].severity).toBe(Severity.LOW);
@@ -107,7 +122,10 @@ describe('math', () => {
   });
 });
 `;
-    const findings = detectAssertionRemoval({ beforeSource: before, afterSource: after });
+    const findings = detectAssertionRemoval({
+      beforeSource: before,
+      afterSource: after,
+    });
     expect(findings).toHaveLength(1);
     expect(findings[0].rule).toBe("assertion-removal/assertion-removed");
     expect(findings[0].severity).toBe(Severity.CRITICAL);
@@ -115,7 +133,10 @@ describe('math', () => {
   });
 
   test("returns no findings when both before and after are empty", () => {
-    const findings = detectAssertionRemoval({ beforeSource: "", afterSource: "" });
+    const findings = detectAssertionRemoval({
+      beforeSource: "",
+      afterSource: "",
+    });
     expect(findings).toHaveLength(0);
   });
 
@@ -130,7 +151,10 @@ test('new name', () => {
   expect(1).toBe(1);
 });
 `;
-    const findings = detectAssertionRemoval({ beforeSource: before, afterSource: after });
+    const findings = detectAssertionRemoval({
+      beforeSource: before,
+      afterSource: after,
+    });
     expect(findings).toHaveLength(1);
     expect(findings[0].rule).toBe("assertion-removal/test-deleted");
     expect(findings[0].message).toContain("old name");
@@ -152,7 +176,10 @@ test('split check', () => {
   expect(b).toBe(2);
 });
 `;
-    const findings = detectAssertionRemoval({ beforeSource: before, afterSource: after });
+    const findings = detectAssertionRemoval({
+      beforeSource: before,
+      afterSource: after,
+    });
     const moved = findings.filter((f) => f.rule === "assertion-removal/assertion-moved");
     const removed = findings.filter((f) => f.rule === "assertion-removal/assertion-removed");
     expect(moved).toHaveLength(1);
@@ -181,7 +208,10 @@ describe('outer', () => {
   });
 });
 `;
-    const findings = detectAssertionRemoval({ beforeSource: before, afterSource: after });
+    const findings = detectAssertionRemoval({
+      beforeSource: before,
+      afterSource: after,
+    });
     expect(findings).toHaveLength(1);
     expect(findings[0].message).toContain("outer > inner > deep");
   });
@@ -198,7 +228,10 @@ test('checks', () => {
   console.log(result);
 });
 `;
-    const findings = detectAssertionRemoval({ beforeSource: before, afterSource: after });
+    const findings = detectAssertionRemoval({
+      beforeSource: before,
+      afterSource: after,
+    });
     expect(findings).toHaveLength(2);
     expect(findings.every((f) => f.rule === "assertion-removal/assertion-removed")).toBe(true);
     expect(findings.every((f) => f.severity === Severity.CRITICAL)).toBe(true);
@@ -217,7 +250,10 @@ test('checks', () => {
   expect(result.name).toBe('test');
 });
 `;
-    const findings = detectAssertionRemoval({ beforeSource: before, afterSource: after });
+    const findings = detectAssertionRemoval({
+      beforeSource: before,
+      afterSource: after,
+    });
     expect(findings).toHaveLength(0);
   });
 
@@ -229,7 +265,10 @@ describe('suite', () => {
 });
 `;
     const after = "";
-    const findings = detectAssertionRemoval({ beforeSource: before, afterSource: after });
+    const findings = detectAssertionRemoval({
+      beforeSource: before,
+      afterSource: after,
+    });
     expect(findings).toHaveLength(2);
     expect(findings.every((f) => f.rule === "assertion-removal/test-deleted")).toBe(true);
   });
@@ -241,7 +280,10 @@ test('new test', () => {
   expect(1).toBe(1);
 });
 `;
-    const findings = detectAssertionRemoval({ beforeSource: before, afterSource: after });
+    const findings = detectAssertionRemoval({
+      beforeSource: before,
+      afterSource: after,
+    });
     expect(findings).toHaveLength(0);
   });
 });

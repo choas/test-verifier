@@ -129,4 +129,3 @@ describe("buildUserPrompt", () => {
     expect(prompt).toMatchSnapshot();
   });
 });
-

@@ -22,9 +22,7 @@ export class AnthropicClient implements LlmClient {
       max_tokens: 1024,
       temperature: 0,
       system: buildSystemPrompt(),
-      messages: [
-        { role: "user", content: buildUserPrompt(input) },
-      ],
+      messages: [{ role: "user", content: buildUserPrompt(input) }],
     });
 
     const textBlock = response.content.find((b) => b.type === "text");
@@ -32,7 +30,10 @@ export class AnthropicClient implements LlmClient {
       throw new Error("Anthropic returned no text content");
     }
 
-    const trimmed = textBlock.text.trim().replace(/^```json?\n?/, "").replace(/\n?```$/, "");
+    const trimmed = textBlock.text
+      .trim()
+      .replace(/^```json?\n?/, "")
+      .replace(/\n?```$/, "");
     const parsed = JSON.parse(trimmed);
     return LlmResponseSchema.parse(parsed);
   }

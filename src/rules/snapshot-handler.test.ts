@@ -53,36 +53,28 @@ describe("isTestFile", () => {
 describe("findPairedTestFile", () => {
   test("pairs __snapshots__/foo.test.ts.snap with foo.test.ts", () => {
     const paths = new Set(["src/foo.test.ts"]);
-    expect(
-      findPairedTestFile("src/__snapshots__/foo.test.ts.snap", paths),
-    ).toBe("src/foo.test.ts");
+    expect(findPairedTestFile("src/__snapshots__/foo.test.ts.snap", paths)).toBe("src/foo.test.ts");
   });
 
   test("pairs root-level __snapshots__ path", () => {
     const paths = new Set(["foo.test.ts"]);
-    expect(findPairedTestFile("__snapshots__/foo.test.ts.snap", paths)).toBe(
-      "foo.test.ts",
-    );
+    expect(findPairedTestFile("__snapshots__/foo.test.ts.snap", paths)).toBe("foo.test.ts");
   });
 
   test("returns null when no paired test found", () => {
     const paths = new Set(["src/bar.test.ts"]);
-    expect(
-      findPairedTestFile("src/__snapshots__/foo.test.ts.snap", paths),
-    ).toBeNull();
+    expect(findPairedTestFile("src/__snapshots__/foo.test.ts.snap", paths)).toBeNull();
   });
 
   test("matches by basename fallback", () => {
     const paths = new Set(["other/dir/foo.test.ts"]);
-    expect(
-      findPairedTestFile("src/__snapshots__/foo.test.ts.snap", paths),
-    ).toBe("other/dir/foo.test.ts");
+    expect(findPairedTestFile("src/__snapshots__/foo.test.ts.snap", paths)).toBe(
+      "other/dir/foo.test.ts",
+    );
   });
 
   test("returns null for empty set", () => {
-    expect(
-      findPairedTestFile("src/__snapshots__/foo.test.ts.snap", new Set()),
-    ).toBeNull();
+    expect(findPairedTestFile("src/__snapshots__/foo.test.ts.snap", new Set())).toBeNull();
   });
 });
 
@@ -135,8 +127,8 @@ describe("detectSnapshotChanges", () => {
       "+++ b/src/err.test.ts",
       "@@ -1,3 +1,3 @@",
       ' test("throws", () => {',
-      '-  expect(() => boom()).toThrowErrorMatchingInlineSnapshot(`old error`);',
-      '+  expect(() => boom()).toThrowErrorMatchingInlineSnapshot(`new error`);',
+      "-  expect(() => boom()).toThrowErrorMatchingInlineSnapshot(`old error`);",
+      "+  expect(() => boom()).toThrowErrorMatchingInlineSnapshot(`new error`);",
       " });",
     ].join("\n");
 
@@ -168,7 +160,7 @@ describe("detectSnapshotChanges", () => {
       "--- a/src/__snapshots__/foo.test.ts.snap",
       "+++ b/src/__snapshots__/foo.test.ts.snap",
       "@@ -1,3 +1,3 @@",
-      ' exports[`renders 1`] = `',
+      " exports[`renders 1`] = `",
       "-<div>old</div>",
       "+<div>new</div>",
       " `;",
@@ -183,9 +175,7 @@ describe("detectSnapshotChanges", () => {
     ].join("\n");
 
     const findings = detectSnapshotChanges(parseDiff(diff));
-    const snapFindings = findings.filter(
-      (f) => f.rule === "snapshot/paired-update",
-    );
+    const snapFindings = findings.filter((f) => f.rule === "snapshot/paired-update");
     expect(snapFindings).toHaveLength(1);
     expect(snapFindings[0].severity).toBe(Severity.SUSPICIOUS);
     expect(snapFindings[0].message).toContain("foo.test.ts.snap");
@@ -198,7 +188,7 @@ describe("detectSnapshotChanges", () => {
       "--- a/src/__snapshots__/foo.test.ts.snap",
       "+++ b/src/__snapshots__/foo.test.ts.snap",
       "@@ -1,3 +1,3 @@",
-      ' exports[`renders 1`] = `',
+      " exports[`renders 1`] = `",
       "-<div>old</div>",
       "+<div>new</div>",
       " `;",
@@ -218,7 +208,7 @@ describe("detectSnapshotChanges", () => {
       "--- a/src/__snapshots__/foo.test.ts.snap",
       "+++ /dev/null",
       "@@ -1,3 +0,0 @@",
-      '-exports[`renders 1`] = `',
+      "-exports[`renders 1`] = `",
       "-<div>content</div>",
       "-`;",
     ].join("\n");
@@ -322,12 +312,8 @@ describe("detectSnapshotChanges", () => {
     ].join("\n");
 
     const findings = detectSnapshotChanges(parseDiff(diff));
-    const inlineFindings = findings.filter(
-      (f) => f.rule === "snapshot/inline-change",
-    );
-    const pairedFindings = findings.filter(
-      (f) => f.rule === "snapshot/paired-update",
-    );
+    const inlineFindings = findings.filter((f) => f.rule === "snapshot/inline-change");
+    const pairedFindings = findings.filter((f) => f.rule === "snapshot/paired-update");
     expect(inlineFindings).toHaveLength(1);
     expect(pairedFindings).toHaveLength(1);
   });
@@ -410,23 +396,15 @@ describe("truncation", () => {
       const result = truncateDiff(before, after, 5000, "head-tail");
       expect(result.truncated).toBe(true);
       expect(result.before.length).toBeGreaterThan(result.after.length);
-      expect(result.before.length + result.after.length).toBeLessThanOrEqual(
-        5100,
-      );
+      expect(result.before.length + result.after.length).toBeLessThanOrEqual(5100);
     });
 
     test("sample strategy", () => {
-      const before = Array.from({ length: 50 }, (_, i) => `old-${i}`).join(
-        "\n",
-      );
-      const after = Array.from({ length: 50 }, (_, i) => `new-${i}`).join(
-        "\n",
-      );
+      const before = Array.from({ length: 50 }, (_, i) => `old-${i}`).join("\n");
+      const after = Array.from({ length: 50 }, (_, i) => `new-${i}`).join("\n");
       const result = truncateDiff(before, after, 200, "sample");
       expect(result.truncated).toBe(true);
-      expect(result.before.length + result.after.length).toBeLessThanOrEqual(
-        300,
-      );
+      expect(result.before.length + result.after.length).toBeLessThanOrEqual(300);
     });
 
     test("summary strategy", () => {

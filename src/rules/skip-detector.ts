@@ -93,7 +93,11 @@ export function detectSkipChanges(
         before: `${beforeBlock.type}${skipLabel(beforeState)}("${beforeBlock.name}")`,
         after: `${afterBlock.type}("${afterBlock.name}")`,
       });
-    } else if (!isActive(beforeState) && !isActive(afterState) && skipLabel(beforeState) !== skipLabel(afterState)) {
+    } else if (
+      !isActive(beforeState) &&
+      !isActive(afterState) &&
+      skipLabel(beforeState) !== skipLabel(afterState)
+    ) {
       const severity = afterState.todo ? todoSeverity : skipSeverity;
       findings.push({
         rule: "skip-detector",

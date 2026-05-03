@@ -52,9 +52,7 @@ export async function history(cwd: string = process.cwd()): Promise<void> {
     }
 
     if (records.length === 0) {
-      const label = testFunction
-        ? `${testFile} > "${testFunction}"`
-        : testFile;
+      const label = testFunction ? `${testFile} > "${testFunction}"` : testFile;
       console.log(`No verification history for ${label}.`);
       return;
     }

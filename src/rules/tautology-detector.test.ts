@@ -183,7 +183,7 @@ test('uses mock', () => {
   expect(mockFn(5)).toBe(true);
 });`;
       const findings = detectTautologies(source);
-      const mockFindings = findings.filter(f => f.rule === "tautology/truthy-mock");
+      const mockFindings = findings.filter((f) => f.rule === "tautology/truthy-mock");
       expect(mockFindings).toHaveLength(1);
       expect(mockFindings[0].message).toContain("mockReturnValue(true)");
     });
@@ -196,7 +196,7 @@ test('mock resolved', () => {
   expect(mockFetch('http://example.com')).resolves.toBeDefined();
 });`;
       const findings = detectTautologies(source);
-      const mockFindings = findings.filter(f => f.rule === "tautology/truthy-mock");
+      const mockFindings = findings.filter((f) => f.rule === "tautology/truthy-mock");
       expect(mockFindings).toHaveLength(1);
       expect(mockFindings[0].message).toContain("mockResolvedValue");
     });
@@ -209,7 +209,7 @@ test('mock string', () => {
   expect(mockGet('key')).toBe('always');
 });`;
       const findings = detectTautologies(source);
-      const mockFindings = findings.filter(f => f.rule === "tautology/truthy-mock");
+      const mockFindings = findings.filter((f) => f.rule === "tautology/truthy-mock");
       expect(mockFindings).toHaveLength(1);
     });
 
@@ -221,7 +221,7 @@ test('mock false', () => {
   expect(mockFn(-1)).toBe(false);
 });`;
       const findings = detectTautologies(source);
-      const mockFindings = findings.filter(f => f.rule === "tautology/truthy-mock");
+      const mockFindings = findings.filter((f) => f.rule === "tautology/truthy-mock");
       expect(mockFindings).toHaveLength(0);
     });
 
@@ -233,7 +233,7 @@ test('mock zero', () => {
   expect(mockFn(0)).toBe(0);
 });`;
       const findings = detectTautologies(source);
-      const mockFindings = findings.filter(f => f.rule === "tautology/truthy-mock");
+      const mockFindings = findings.filter((f) => f.rule === "tautology/truthy-mock");
       expect(mockFindings).toHaveLength(0);
     });
 
@@ -245,7 +245,7 @@ test('trivial mock', () => {
   expect(mockFn()).toBe(true);
 });`;
       const findings = detectTautologies(source);
-      const mockFindings = findings.filter(f => f.rule === "tautology/truthy-mock");
+      const mockFindings = findings.filter((f) => f.rule === "tautology/truthy-mock");
       expect(mockFindings).toHaveLength(0);
     });
   });
@@ -265,7 +265,9 @@ test('taut', () => {
 test('taut', () => {
   expect(true).toBe(true);
 });`;
-      const findings = detectTautologies(source, "test.ts", { severity: Severity.SUSPICIOUS });
+      const findings = detectTautologies(source, "test.ts", {
+        severity: Severity.SUSPICIOUS,
+      });
       expect(findings[0].severity).toBe(Severity.SUSPICIOUS);
     });
   });
@@ -285,7 +287,7 @@ test('no assert', () => {
       const findings = detectTautologies(source);
       expect(findings).toHaveLength(3);
 
-      const rules = findings.map(f => f.rule).sort();
+      const rules = findings.map((f) => f.rule).sort();
       expect(rules).toContain("tautology/literal-match");
       expect(rules).toContain("tautology/same-identifier");
       expect(rules).toContain("tautology/no-assertions");

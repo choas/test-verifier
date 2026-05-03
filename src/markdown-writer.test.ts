@@ -1,10 +1,6 @@
 import { describe, it, expect } from "bun:test";
 import { createHash } from "node:crypto";
-import {
-  generateStubMarkdown,
-  formatTimestamp,
-  sanitizeTestFilePath,
-} from "./markdown-writer";
+import { generateStubMarkdown, formatTimestamp, sanitizeTestFilePath } from "./markdown-writer";
 import { Severity, type Finding } from "./types";
 import type { RuleEngineResult } from "./rule-engine";
 
@@ -183,10 +179,7 @@ describe("generateStubMarkdown", () => {
       prodFilesRelated: ["src/lib/auth/validate.ts", "src/lib/auth/types.ts"],
     });
 
-    expect(stub.prod_files_related).toEqual([
-      "src/lib/auth/validate.ts",
-      "src/lib/auth/types.ts",
-    ]);
+    expect(stub.prod_files_related).toEqual(["src/lib/auth/validate.ts", "src/lib/auth/types.ts"]);
     expect(content).toContain("prod_files_related:");
     expect(content).toContain('  - "src/lib/auth/validate.ts"');
     expect(content).toContain('  - "src/lib/auth/types.ts"');
@@ -290,9 +283,7 @@ describe("generateStubMarkdown", () => {
     });
 
     expect(content).toContain("## Analysis");
-    expect(content).toContain(
-      "(Pending LLM enrichment. Run `bunx test-verifier enrich`.)",
-    );
+    expect(content).toContain("(Pending LLM enrichment. Run `bunx test-verifier enrich`.)");
   });
 
   it("renders placeholder Decision section", () => {

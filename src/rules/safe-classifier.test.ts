@@ -5,7 +5,10 @@ import { Severity } from "../types";
 describe("classifySafeChanges", () => {
   test("returns no findings when source is identical", () => {
     const source = `test('x', () => { expect(1).toBe(1); });`;
-    const findings = classifySafeChanges({ beforeSource: source, afterSource: source });
+    const findings = classifySafeChanges({
+      beforeSource: source,
+      afterSource: source,
+    });
     expect(findings).toHaveLength(0);
   });
 
@@ -16,7 +19,10 @@ describe("classifySafeChanges", () => {
 
   test("returns no findings when file is deleted", () => {
     const before = `test('x', () => { expect(1).toBe(1); });`;
-    const findings = classifySafeChanges({ beforeSource: before, afterSource: "" });
+    const findings = classifySafeChanges({
+      beforeSource: before,
+      afterSource: "",
+    });
     expect(findings).toHaveLength(0);
   });
 
@@ -29,7 +35,10 @@ test('adds', () => {
   expect(1 + 2).toBe(3);
 });
 `;
-      const findings = classifySafeChanges({ beforeSource: "", afterSource: after });
+      const findings = classifySafeChanges({
+        beforeSource: "",
+        afterSource: after,
+      });
       expect(findings).toHaveLength(1);
       expect(findings[0].rule).toBe("safe/new-test-file");
       expect(findings[0].severity).toBe(Severity.SAFE);
@@ -44,7 +53,10 @@ describe('math', () => {
   test('multiplies', () => { expect(2 * 3).toBe(6); });
 });
 `;
-      const findings = classifySafeChanges({ beforeSource: "", afterSource: after });
+      const findings = classifySafeChanges({
+        beforeSource: "",
+        afterSource: after,
+      });
       expect(findings).toHaveLength(1);
       expect(findings[0].message).toContain("3 test(s)");
     });
@@ -58,14 +70,20 @@ describe('outer', () => {
   test('also works', () => { expect(1).toBe(1); });
 });
 `;
-      const findings = classifySafeChanges({ beforeSource: "", afterSource: after });
+      const findings = classifySafeChanges({
+        beforeSource: "",
+        afterSource: after,
+      });
       expect(findings).toHaveLength(1);
       expect(findings[0].message).toContain("2 test(s)");
     });
 
     test("returns no findings for new file without test blocks", () => {
       const after = `export function helper() { return 42; }`;
-      const findings = classifySafeChanges({ beforeSource: "", afterSource: after });
+      const findings = classifySafeChanges({
+        beforeSource: "",
+        afterSource: after,
+      });
       expect(findings).toHaveLength(0);
     });
   });
@@ -76,7 +94,10 @@ describe('outer', () => {
     test("detects whitespace-only changes", () => {
       const before = `test('x',()=>{expect(1).toBe(1)});`;
       const after = `test('x', () => {\n  expect(1).toBe(1)\n});`;
-      const findings = classifySafeChanges({ beforeSource: before, afterSource: after });
+      const findings = classifySafeChanges({
+        beforeSource: before,
+        afterSource: after,
+      });
       expect(findings).toHaveLength(1);
       expect(findings[0].rule).toBe("safe/formatting-only");
       expect(findings[0].severity).toBe(Severity.SAFE);
@@ -85,7 +106,10 @@ describe('outer', () => {
     test("detects semicolon additions/removals", () => {
       const before = `test('x', () => {\n  expect(1).toBe(1)\n})`;
       const after = `test('x', () => {\n  expect(1).toBe(1);\n});`;
-      const findings = classifySafeChanges({ beforeSource: before, afterSource: after });
+      const findings = classifySafeChanges({
+        beforeSource: before,
+        afterSource: after,
+      });
       expect(findings).toHaveLength(1);
       expect(findings[0].rule).toBe("safe/formatting-only");
     });
@@ -93,7 +117,10 @@ describe('outer', () => {
     test("detects trailing comma changes", () => {
       const before = `const arr = [\n  1,\n  2,\n  3\n]`;
       const after = `const arr = [\n  1,\n  2,\n  3,\n]`;
-      const findings = classifySafeChanges({ beforeSource: before, afterSource: after });
+      const findings = classifySafeChanges({
+        beforeSource: before,
+        afterSource: after,
+      });
       expect(findings).toHaveLength(1);
       expect(findings[0].rule).toBe("safe/formatting-only");
     });
@@ -101,7 +128,10 @@ describe('outer', () => {
     test("detects indentation changes", () => {
       const before = `test('x', () => {\n    expect(1).toBe(1);\n});`;
       const after = `test('x', () => {\n  expect(1).toBe(1);\n});`;
-      const findings = classifySafeChanges({ beforeSource: before, afterSource: after });
+      const findings = classifySafeChanges({
+        beforeSource: before,
+        afterSource: after,
+      });
       expect(findings).toHaveLength(1);
       expect(findings[0].rule).toBe("safe/formatting-only");
     });
@@ -109,7 +139,10 @@ describe('outer', () => {
     test("does not classify value changes as formatting", () => {
       const before = `test('x', () => { expect(1).toBe(1); });`;
       const after = `test('x', () => { expect(1).toBe(2); });`;
-      const findings = classifySafeChanges({ beforeSource: before, afterSource: after });
+      const findings = classifySafeChanges({
+        beforeSource: before,
+        afterSource: after,
+      });
       const formatting = findings.filter((f) => f.rule === "safe/formatting-only");
       expect(formatting).toHaveLength(0);
     });
@@ -121,7 +154,10 @@ describe('outer', () => {
     test("detects variable type annotation addition", () => {
       const before = `const x = 1;`;
       const after = `const x: number = 1;`;
-      const findings = classifySafeChanges({ beforeSource: before, afterSource: after });
+      const findings = classifySafeChanges({
+        beforeSource: before,
+        afterSource: after,
+      });
       expect(findings).toHaveLength(1);
       expect(findings[0].rule).toBe("safe/type-annotation-only");
       expect(findings[0].severity).toBe(Severity.SAFE);
@@ -130,7 +166,10 @@ describe('outer', () => {
     test("detects return type annotation addition", () => {
       const before = `const fn = () => { return 1; }`;
       const after = `const fn = (): number => { return 1; }`;
-      const findings = classifySafeChanges({ beforeSource: before, afterSource: after });
+      const findings = classifySafeChanges({
+        beforeSource: before,
+        afterSource: after,
+      });
       expect(findings).toHaveLength(1);
       expect(findings[0].rule).toBe("safe/type-annotation-only");
     });
@@ -138,7 +177,10 @@ describe('outer', () => {
     test("detects import type addition", () => {
       const before = `const x = 1;`;
       const after = `import type { Foo } from './foo';\nconst x = 1;`;
-      const findings = classifySafeChanges({ beforeSource: before, afterSource: after });
+      const findings = classifySafeChanges({
+        beforeSource: before,
+        afterSource: after,
+      });
       expect(findings).toHaveLength(1);
       expect(findings[0].rule).toBe("safe/type-annotation-only");
     });
@@ -146,7 +188,10 @@ describe('outer', () => {
     test("detects type alias addition", () => {
       const before = `const x = 1;`;
       const after = `type MyType = string | number;\nconst x = 1;`;
-      const findings = classifySafeChanges({ beforeSource: before, afterSource: after });
+      const findings = classifySafeChanges({
+        beforeSource: before,
+        afterSource: after,
+      });
       expect(findings).toHaveLength(1);
       expect(findings[0].rule).toBe("safe/type-annotation-only");
     });
@@ -154,7 +199,10 @@ describe('outer', () => {
     test("does not classify value changes as type-only", () => {
       const before = `const x: string = "hello";`;
       const after = `const x: number = 42;`;
-      const findings = classifySafeChanges({ beforeSource: before, afterSource: after });
+      const findings = classifySafeChanges({
+        beforeSource: before,
+        afterSource: after,
+      });
       const typeOnly = findings.filter((f) => f.rule === "safe/type-annotation-only");
       expect(typeOnly).toHaveLength(0);
     });
@@ -162,7 +210,10 @@ describe('outer', () => {
     test("handles combined type annotation and formatting changes", () => {
       const before = `const x = 1`;
       const after = `const x: number = 1;`;
-      const findings = classifySafeChanges({ beforeSource: before, afterSource: after });
+      const findings = classifySafeChanges({
+        beforeSource: before,
+        afterSource: after,
+      });
       expect(findings).toHaveLength(1);
       expect(findings[0].rule).toBe("safe/type-annotation-only");
     });
@@ -186,7 +237,10 @@ test('two', () => {
   expect(2).toBe(2);
 });
 `;
-      const findings = classifySafeChanges({ beforeSource: before, afterSource: after });
+      const findings = classifySafeChanges({
+        beforeSource: before,
+        afterSource: after,
+      });
       expect(findings).toHaveLength(1);
       expect(findings[0].rule).toBe("safe/new-test-block");
       expect(findings[0].severity).toBe(Severity.SAFE);
@@ -212,7 +266,10 @@ test('three', () => {
   expect(3).toBe(3);
 });
 `;
-      const findings = classifySafeChanges({ beforeSource: before, afterSource: after });
+      const findings = classifySafeChanges({
+        beforeSource: before,
+        afterSource: after,
+      });
       const newBlocks = findings.filter((f) => f.rule === "safe/new-test-block");
       expect(newBlocks).toHaveLength(1);
       expect(newBlocks[0].message).toContain("2 new test(s)");
@@ -237,7 +294,10 @@ describe('math', () => {
   });
 });
 `;
-      const findings = classifySafeChanges({ beforeSource: before, afterSource: after });
+      const findings = classifySafeChanges({
+        beforeSource: before,
+        afterSource: after,
+      });
       const newBlocks = findings.filter((f) => f.rule === "safe/new-test-block");
       expect(newBlocks).toHaveLength(1);
     });
@@ -257,7 +317,10 @@ test('two', () => {
   expect(2).toBe(2);
 });
 `;
-      const findings = classifySafeChanges({ beforeSource: before, afterSource: after });
+      const findings = classifySafeChanges({
+        beforeSource: before,
+        afterSource: after,
+      });
       expect(findings).toHaveLength(0);
     });
 
@@ -275,7 +338,10 @@ test('one', () => {
   expect(1).toBe(1);
 });
 `;
-      const findings = classifySafeChanges({ beforeSource: before, afterSource: after });
+      const findings = classifySafeChanges({
+        beforeSource: before,
+        afterSource: after,
+      });
       expect(findings).toHaveLength(0);
     });
   });
@@ -295,7 +361,10 @@ test('checks', () => {
   expect(result.name).toBe('test');
 });
 `;
-      const findings = classifySafeChanges({ beforeSource: before, afterSource: after });
+      const findings = classifySafeChanges({
+        beforeSource: before,
+        afterSource: after,
+      });
       expect(findings).toHaveLength(1);
       expect(findings[0].rule).toBe("safe/new-assertion");
       expect(findings[0].severity).toBe(Severity.SAFE);
@@ -313,7 +382,10 @@ test('checks', () => {
   expect(result).toBeDefined();
 });
 `;
-      const findings = classifySafeChanges({ beforeSource: before, afterSource: after });
+      const findings = classifySafeChanges({
+        beforeSource: before,
+        afterSource: after,
+      });
       expect(findings).toHaveLength(0);
     });
 
@@ -328,7 +400,10 @@ test('checks', () => {
   expect(result.name).toBe('world');
 });
 `;
-      const findings = classifySafeChanges({ beforeSource: before, afterSource: after });
+      const findings = classifySafeChanges({
+        beforeSource: before,
+        afterSource: after,
+      });
       expect(findings).toHaveLength(0);
     });
 
@@ -348,7 +423,10 @@ test('two', () => {
   expect(2).toBe(2);
 });
 `;
-      const findings = classifySafeChanges({ beforeSource: before, afterSource: after });
+      const findings = classifySafeChanges({
+        beforeSource: before,
+        afterSource: after,
+      });
       const newBlock = findings.filter((f) => f.rule === "safe/new-test-block");
       const newAssertion = findings.filter((f) => f.rule === "safe/new-assertion");
       expect(newBlock).toHaveLength(1);
@@ -368,7 +446,10 @@ test('checks', () => {
   expect(items).toHaveLength(3);
 });
 `;
-      const findings = classifySafeChanges({ beforeSource: before, afterSource: after });
+      const findings = classifySafeChanges({
+        beforeSource: before,
+        afterSource: after,
+      });
       expect(findings).toHaveLength(1);
       expect(findings[0].rule).toBe("safe/new-assertion");
     });
@@ -390,7 +471,10 @@ test('checks', () => {
   expect(output).toBe(42);
 });
 `;
-      const findings = classifySafeChanges({ beforeSource: before, afterSource: after });
+      const findings = classifySafeChanges({
+        beforeSource: before,
+        afterSource: after,
+      });
       expect(findings).toHaveLength(1);
       expect(findings[0].rule).toBe("safe/identifier-rename");
       expect(findings[0].severity).toBe(Severity.SAFE);
@@ -411,7 +495,10 @@ test('checks', () => {
   expect(x).toBe(3);
 });
 `;
-      const findings = classifySafeChanges({ beforeSource: before, afterSource: after });
+      const findings = classifySafeChanges({
+        beforeSource: before,
+        afterSource: after,
+      });
       const renames = findings.filter((f) => f.rule === "safe/identifier-rename");
       expect(renames).toHaveLength(0);
     });
@@ -427,7 +514,10 @@ test('checks', () => {
   expect(obj.label).toBe('test');
 });
 `;
-      const findings = classifySafeChanges({ beforeSource: before, afterSource: after });
+      const findings = classifySafeChanges({
+        beforeSource: before,
+        afterSource: after,
+      });
       const renames = findings.filter((f) => f.rule === "safe/identifier-rename");
       expect(renames).toHaveLength(0);
     });
@@ -435,7 +525,10 @@ test('checks', () => {
     test("rejects inconsistent rename", () => {
       const before = `const x = 1;\nconst x = 2;`;
       const after = `const a = 1;\nconst b = 2;`;
-      const findings = classifySafeChanges({ beforeSource: before, afterSource: after });
+      const findings = classifySafeChanges({
+        beforeSource: before,
+        afterSource: after,
+      });
       const renames = findings.filter((f) => f.rule === "safe/identifier-rename");
       expect(renames).toHaveLength(0);
     });
@@ -443,7 +536,10 @@ test('checks', () => {
     test("rejects when line count changes", () => {
       const before = `const x = 1;`;
       const after = `const y = 1;\nconst z = 2;`;
-      const findings = classifySafeChanges({ beforeSource: before, afterSource: after });
+      const findings = classifySafeChanges({
+        beforeSource: before,
+        afterSource: after,
+      });
       const renames = findings.filter((f) => f.rule === "safe/identifier-rename");
       expect(renames).toHaveLength(0);
     });
@@ -451,7 +547,10 @@ test('checks', () => {
     test("rejects partial rename (not applied everywhere)", () => {
       const before = `const result = 1;\nfunction check(result) { return result; }\nexpect(check(result)).toBe(1);`;
       const after = `const output = 1;\nfunction check(result) { return result; }\nexpect(check(output)).toBe(1);`;
-      const findings = classifySafeChanges({ beforeSource: before, afterSource: after });
+      const findings = classifySafeChanges({
+        beforeSource: before,
+        afterSource: after,
+      });
       const renames = findings.filter((f) => f.rule === "safe/identifier-rename");
       expect(renames).toHaveLength(0);
     });
@@ -459,7 +558,10 @@ test('checks', () => {
     test("allows rename of multiple variables consistently", () => {
       const before = `const foo = 1;\nconst bar = 2;\nexpect(foo + bar).toBe(3);`;
       const after = `const baz = 1;\nconst qux = 2;\nexpect(baz + qux).toBe(3);`;
-      const findings = classifySafeChanges({ beforeSource: before, afterSource: after });
+      const findings = classifySafeChanges({
+        beforeSource: before,
+        afterSource: after,
+      });
       expect(findings).toHaveLength(1);
       expect(findings[0].rule).toBe("safe/identifier-rename");
     });
@@ -487,20 +589,29 @@ test('two', () => {
   expect(2).toBe(2);
 });
 `;
-      const findings = classifySafeChanges({ beforeSource: before, afterSource: after });
+      const findings = classifySafeChanges({
+        beforeSource: before,
+        afterSource: after,
+      });
       expect(findings).toHaveLength(0);
     });
 
     test("handles whitespace-only before source as empty", () => {
       const after = `test('x', () => { expect(1).toBe(1); });`;
-      const findings = classifySafeChanges({ beforeSource: "  \n  ", afterSource: after });
+      const findings = classifySafeChanges({
+        beforeSource: "  \n  ",
+        afterSource: after,
+      });
       expect(findings).toHaveLength(1);
       expect(findings[0].rule).toBe("safe/new-test-file");
     });
 
     test("handles whitespace-only after source as deleted", () => {
       const before = `test('x', () => { expect(1).toBe(1); });`;
-      const findings = classifySafeChanges({ beforeSource: before, afterSource: "  \n  " });
+      const findings = classifySafeChanges({
+        beforeSource: before,
+        afterSource: "  \n  ",
+      });
       expect(findings).toHaveLength(0);
     });
   });

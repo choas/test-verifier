@@ -15,7 +15,10 @@ const OllamaChatResponseSchema = z.object({
 });
 
 function parseResponse(raw: string): LlmResponse {
-  const trimmed = raw.trim().replace(/^```json?\n?/, "").replace(/\n?```$/, "");
+  const trimmed = raw
+    .trim()
+    .replace(/^```json?\n?/, "")
+    .replace(/\n?```$/, "");
   const parsed = JSON.parse(trimmed);
   return LlmResponseSchema.parse(parsed);
 }
@@ -46,20 +49,15 @@ export class OllamaClient implements LlmClient {
     let lastError: unknown;
 
     for (let attempt = 0; attempt < 2; attempt++) {
-      const response = await fetch(
-        `${this.config.baseUrl}/api/chat`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body),
-          signal: AbortSignal.timeout(this.config.timeoutMs),
-        },
-      );
+      const response = await fetch(`${this.config.baseUrl}/api/chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout(this.config.timeoutMs),
+      });
 
       if (!response.ok) {
-        throw new Error(
-          `Ollama request failed: ${response.status} ${response.statusText}`,
-        );
+        throw new Error(`Ollama request failed: ${response.status} ${response.statusText}`);
       }
 
       const json: unknown = await response.json();
@@ -95,9 +93,7 @@ export class OllamaClient implements LlmClient {
     });
 
     if (!response.ok) {
-      throw new Error(
-        `Ollama request failed: ${response.status} ${response.statusText}`,
-      );
+      throw new Error(`Ollama request failed: ${response.status} ${response.statusText}`);
     }
 
     const json: unknown = await response.json();

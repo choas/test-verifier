@@ -9,7 +9,13 @@ export enum Severity {
 
 export const SeveritySchema = z.nativeEnum(Severity);
 
-export const StubStatusSchema = z.enum(["pending", "approved", "rejected", "needs_fix", "resolved"]);
+export const StubStatusSchema = z.enum([
+  "pending",
+  "approved",
+  "rejected",
+  "needs_fix",
+  "resolved",
+]);
 
 export interface Finding {
   rule: string;
@@ -36,4 +42,3 @@ export interface StubFile {
   diff_hash: string;
   parent_verification_id?: string;
 }
-

@@ -86,7 +86,7 @@ export async function list(options: ListOptions = {}, cwd: string = process.cwd(
     for (const record of records) {
       const displayRecord = {
         ...record,
-        createdAt: new Date(record.createdAt).toISOString()
+        createdAt: new Date(record.createdAt).toISOString(),
       };
       console.log(formatRecord(displayRecord));
       console.log();

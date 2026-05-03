@@ -5,7 +5,13 @@ import { VerificationStore, type VerificationRecord } from "../db/verification-s
 import { parseMarkdown, type ParsedFinding } from "../markdown-reader";
 import type { StubStatus } from "../types";
 
-const STATUS_DIRS: readonly StubStatus[] = ["pending", "approved", "rejected", "needs_fix", "resolved"];
+const STATUS_DIRS: readonly StubStatus[] = [
+  "pending",
+  "approved",
+  "rejected",
+  "needs_fix",
+  "resolved",
+];
 
 function combineSeverities(findings: ParsedFinding[]): string {
   if (findings.length === 0) return "safe";

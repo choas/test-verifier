@@ -19,8 +19,7 @@ const DEFAULT_CONFIG: SnapshotConfig = {
   truncationStrategy: "head-tail",
 };
 
-const INLINE_SNAPSHOT_RE =
-  /\.(toMatchInlineSnapshot|toThrowErrorMatchingInlineSnapshot)\s*\(/;
+const INLINE_SNAPSHOT_RE = /\.(toMatchInlineSnapshot|toThrowErrorMatchingInlineSnapshot)\s*\(/;
 
 const TEST_FILE_RE = /\.(test|spec)\.(ts|tsx|js|jsx|mts|mjs|svelte\.ts)$/;
 
@@ -40,10 +39,7 @@ function isFileDeleted(diff: FileDiff): boolean {
   );
 }
 
-export function findPairedTestFile(
-  snapPath: string,
-  changedTestPaths: Set<string>,
-): string | null {
+export function findPairedTestFile(snapPath: string, changedTestPaths: Set<string>): string | null {
   let candidate = snapPath.replace(/\.snap$/, "");
   candidate = candidate.replace(/(^|\/)__snapshots__\//, "$1");
 
@@ -58,10 +54,7 @@ export function findPairedTestFile(
   return null;
 }
 
-function detectInlineChanges(
-  diff: FileDiff,
-  severity: Severity,
-): Finding[] {
+function detectInlineChanges(diff: FileDiff, severity: Severity): Finding[] {
   const findings: Finding[] = [];
 
   for (const hunk of diff.hunks) {
@@ -79,18 +72,12 @@ function detectInlineChanges(
     const hasAdditions = hunk.lines.some((l) => l.type === "added");
 
     const isChange =
-      (removedInMatcher && addedInMatcher) ||
-      (contextMatcher && hasRemovals && hasAdditions);
+      (removedInMatcher && addedInMatcher) || (contextMatcher && hasRemovals && hasAdditions);
 
     if (!isChange) continue;
 
-    const matcherLine = hunk.lines.find((l) =>
-      INLINE_SNAPSHOT_RE.test(l.content),
-    );
-    const lineNum =
-      matcherLine?.newLineNumber ??
-      matcherLine?.oldLineNumber ??
-      hunk.newStart;
+    const matcherLine = hunk.lines.find((l) => INLINE_SNAPSHOT_RE.test(l.content));
+    const lineNum = matcherLine?.newLineNumber ?? matcherLine?.oldLineNumber ?? hunk.newStart;
 
     const before = hunk.lines
       .filter((l) => l.type === "removed")
@@ -128,10 +115,8 @@ function extractLines(diff: FileDiff, type: "removed" | "added"): string {
 function firstChangedLine(diff: FileDiff): number {
   for (const hunk of diff.hunks) {
     for (const line of hunk.lines) {
-      if (line.type === "added" && line.newLineNumber !== null)
-        return line.newLineNumber;
-      if (line.type === "removed" && line.oldLineNumber !== null)
-        return line.oldLineNumber;
+      if (line.type === "added" && line.newLineNumber !== null) return line.newLineNumber;
+      if (line.type === "removed" && line.oldLineNumber !== null) return line.oldLineNumber;
     }
   }
   return 1;
@@ -228,12 +213,8 @@ export function detectSnapshotChanges(
   const cfg = { ...DEFAULT_CONFIG, ...config };
   const findings: Finding[] = [];
 
-  const snapDiffs = diffs.filter(
-    (d) => isSnapFile(d.newPath) || isSnapFile(d.oldPath),
-  );
-  const testDiffs = diffs.filter(
-    (d) => isTestFile(d.newPath) || isTestFile(d.oldPath),
-  );
+  const snapDiffs = diffs.filter((d) => isSnapFile(d.newPath) || isSnapFile(d.oldPath));
+  const testDiffs = diffs.filter((d) => isTestFile(d.newPath) || isTestFile(d.oldPath));
   const changedTestPaths = new Set<string>();
   for (const d of testDiffs) {
     changedTestPaths.add(d.newPath);
@@ -247,12 +228,7 @@ export function detectSnapshotChanges(
   for (const snapDiff of snapDiffs) {
     if (isFileDeleted(snapDiff)) {
       const content = extractLines(snapDiff, "removed");
-      const truncated = truncateDiff(
-        content,
-        "",
-        cfg.maxDiffSizeForLLM,
-        cfg.truncationStrategy,
-      );
+      const truncated = truncateDiff(content, "", cfg.maxDiffSizeForLLM, cfg.truncationStrategy);
       findings.push({
         rule: "snapshot/deletion",
         severity: cfg.deletion,
