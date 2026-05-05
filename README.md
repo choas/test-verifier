@@ -256,4 +256,4 @@ npm unlink -g test-verifier
 
 ## License
 
-ISC
+Apache-2.0
