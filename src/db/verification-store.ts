@@ -201,6 +201,19 @@ export class VerificationStore {
     return rows.map((r) => this.toRecord(r));
   }
 
+  findPendingForTestFile(testFile: string): VerificationRecord[] {
+    const rows = parseRows(
+      this.db
+        .query(
+          `SELECT * FROM verifications
+           WHERE test_file = ? AND status = 'pending'
+           ORDER BY created_at DESC`,
+        )
+        .all(testFile),
+    );
+    return rows.map((r) => this.toRecord(r));
+  }
+
   findNeedsFixForTestFunction(testFile: string, testFunction: string): VerificationRecord[] {
     const rows = parseRows(
       this.db

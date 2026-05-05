@@ -123,6 +123,16 @@ describe("VerificationStore", () => {
     expect(results.every((r) => r.status === "needs_fix")).toBe(true);
   });
 
+  test("findPendingForTestFile returns only pending records", () => {
+    store.insert(makeRecord({ id: "tv_001", status: "pending" }));
+    store.insert(makeRecord({ id: "tv_002", status: "needs_fix" }));
+    store.insert(makeRecord({ id: "tv_003", status: "pending" }));
+
+    const results = store.findPendingForTestFile("src/utils.test.ts");
+    expect(results).toHaveLength(2);
+    expect(results.every((r) => r.status === "pending")).toBe(true);
+  });
+
   test("findNeedsFixForTestFunction filters by function name", () => {
     store.insert(
       makeRecord({

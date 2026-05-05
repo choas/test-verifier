@@ -178,33 +178,47 @@ export async function check(
       const testFunctions = collectTestFunctionNames(afterBlocks);
 
       const needsFixRecords = store.findNeedsFixForTestFile(testFilePath);
+      const pendingRecords = store.findPendingForTestFile(testFilePath);
       let parentVerificationId: string | undefined;
-      const resolvedIds: string[] = [];
+      const resolvedIds: { id: string; fromStatus: "needs_fix" | "pending" }[] = [];
 
-      if (needsFixRecords.length > 0) {
-        for (const nf of needsFixRecords) {
-          const overlappingFunctions = nf.testFunctions.filter((fn) => testFunctions.includes(fn));
+      for (const nf of needsFixRecords) {
+        const overlappingFunctions = nf.testFunctions.filter((fn) => testFunctions.includes(fn));
 
-          if (overlappingFunctions.length > 0 || nf.testFunctions.length === 0) {
-            const originalRules = new Set(nf.rule.split(",").map((r) => r.trim()));
-            const currentRules = new Set(ruleResult.findings.map((f) => f.rule));
+        if (overlappingFunctions.length > 0 || nf.testFunctions.length === 0) {
+          const originalRules = new Set(nf.rule.split(",").map((r) => r.trim()));
+          const currentRules = new Set(ruleResult.findings.map((f) => f.rule));
 
-            const stillTriggered = [...originalRules].some((r) => currentRules.has(r));
+          const stillTriggered = [...originalRules].some((r) => currentRules.has(r));
 
-            if (!stillTriggered) {
-              resolvedIds.push(nf.id);
-            } else {
-              parentVerificationId = nf.id;
-            }
+          if (!stillTriggered) {
+            resolvedIds.push({ id: nf.id, fromStatus: "needs_fix" });
+          } else {
+            parentVerificationId = nf.id;
           }
         }
       }
 
-      for (const resolvedId of resolvedIds) {
-        const nfFilename = `${resolvedId.replace(/^tv_/, "")}.md`;
-        const nfPath = join(statusDir(cwd, "needs_fix"), nfFilename);
+      for (const pr of pendingRecords) {
+        const overlappingFunctions = pr.testFunctions.filter((fn) => testFunctions.includes(fn));
+
+        if (overlappingFunctions.length > 0 || pr.testFunctions.length === 0) {
+          const originalRules = new Set(pr.rule.split(",").map((r) => r.trim()));
+          const currentRules = new Set(ruleResult.findings.map((f) => f.rule));
+
+          const stillTriggered = [...originalRules].some((r) => currentRules.has(r));
+
+          if (!stillTriggered) {
+            resolvedIds.push({ id: pr.id, fromStatus: "pending" });
+          }
+        }
+      }
+
+      for (const { id: resolvedId, fromStatus } of resolvedIds) {
+        const resolvedFilename = `${resolvedId.replace(/^tv_/, "")}.md`;
+        const resolvedPath = join(statusDir(cwd, fromStatus), resolvedFilename);
         try {
-          const mdContent = await readFile(nfPath, "utf-8");
+          const mdContent = await readFile(resolvedPath, "utf-8");
           parseMarkdown(mdContent);
           let updated = mdContent.replace(/^status:\s*.+$/m, "status: resolved");
           const resolveMarker = "## Decision";
@@ -215,8 +229,8 @@ export async function check(
               beforeDecision +
               `\n\nauto-resolved\nrationale: original rules no longer triggered\ndate: ${new Date().toISOString()}\n`;
           }
-          await writeFile(nfPath, updated);
-          await moveToResolved(cwd, nfFilename, "needs_fix");
+          await writeFile(resolvedPath, updated);
+          await moveToResolved(cwd, resolvedFilename, fromStatus);
         } catch (err: unknown) {
           if ((err as NodeJS.ErrnoException).code !== "ENOENT") throw err;
         }
@@ -309,7 +323,7 @@ export async function check(
   const pendingCount = stubCount - autoApprovedCount;
   const parts = [`${stubCount} file(s) analyzed`, `${autoApprovedCount} auto-approved`];
   if (resolvedCount > 0) {
-    parts.push(`${resolvedCount} needs_fix resolved`);
+    parts.push(`${resolvedCount} prior finding(s) resolved`);
   }
   console.log(`test-verifier: ${parts.join(", ")}.`);
 
