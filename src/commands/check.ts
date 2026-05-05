@@ -182,19 +182,26 @@ export async function check(
       let parentVerificationId: string | undefined;
       const resolvedIds: { id: string; fromStatus: "needs_fix" | "pending" }[] = [];
 
+      const autoApproveSet = new Set<string>(config.policy.autoApprove);
+      const willAutoApprove = autoApproveSet.has(ruleResult.overallSeverity);
+
       for (const nf of needsFixRecords) {
         const overlappingFunctions = nf.testFunctions.filter((fn) => testFunctions.includes(fn));
 
         if (overlappingFunctions.length > 0 || nf.testFunctions.length === 0) {
-          const originalRules = new Set(nf.rule.split(",").map((r) => r.trim()));
-          const currentRules = new Set(ruleResult.findings.map((f) => f.rule));
-
-          const stillTriggered = [...originalRules].some((r) => currentRules.has(r));
-
-          if (!stillTriggered) {
+          if (willAutoApprove) {
             resolvedIds.push({ id: nf.id, fromStatus: "needs_fix" });
           } else {
-            parentVerificationId = nf.id;
+            const originalRules = new Set(nf.rule.split(",").map((r) => r.trim()));
+            const currentRules = new Set(ruleResult.findings.map((f) => f.rule));
+
+            const stillTriggered = [...originalRules].some((r) => currentRules.has(r));
+
+            if (!stillTriggered) {
+              resolvedIds.push({ id: nf.id, fromStatus: "needs_fix" });
+            } else {
+              parentVerificationId = nf.id;
+            }
           }
         }
       }
@@ -203,13 +210,17 @@ export async function check(
         const overlappingFunctions = pr.testFunctions.filter((fn) => testFunctions.includes(fn));
 
         if (overlappingFunctions.length > 0 || pr.testFunctions.length === 0) {
-          const originalRules = new Set(pr.rule.split(",").map((r) => r.trim()));
-          const currentRules = new Set(ruleResult.findings.map((f) => f.rule));
-
-          const stillTriggered = [...originalRules].some((r) => currentRules.has(r));
-
-          if (!stillTriggered) {
+          if (willAutoApprove) {
             resolvedIds.push({ id: pr.id, fromStatus: "pending" });
+          } else {
+            const originalRules = new Set(pr.rule.split(",").map((r) => r.trim()));
+            const currentRules = new Set(ruleResult.findings.map((f) => f.rule));
+
+            const stillTriggered = [...originalRules].some((r) => currentRules.has(r));
+
+            if (!stillTriggered) {
+              resolvedIds.push({ id: pr.id, fromStatus: "pending" });
+            }
           }
         }
       }
@@ -285,9 +296,7 @@ export async function check(
       };
       store.insert(record);
 
-      const autoApproveSet = new Set<string>(config.policy.autoApprove);
-      const isAutoApproved = autoApproveSet.has(ruleResult.overallSeverity);
-      if (isAutoApproved) {
+      if (willAutoApprove) {
         const approveMarker = "## Decision";
         const approveIdx = content.indexOf(approveMarker);
         if (approveIdx !== -1) {
@@ -309,7 +318,7 @@ export async function check(
       }
 
       const lineageLabel = parentVerificationId ? ` (linked to ${parentVerificationId})` : "";
-      const label = isAutoApproved ? " (auto-approved)" : lineageLabel;
+      const label = willAutoApprove ? " (auto-approved)" : lineageLabel;
       console.log(`  ${ruleResult.overallSeverity} ${testFilePath}${label}`);
     }
   } finally {
