@@ -102,16 +102,19 @@ export async function check(
 
   if (mode === "committed") {
     const storedHead = await readHead(cwd);
-    if (!storedHead) {
-      console.error("test-verifier: HEAD not initialized. Run `bunx test-verifier init` first.");
-      process.exit(1);
-    }
 
     const toSha = await getCurrentCommitSha(cwd);
     if (!toSha) {
       console.error("test-verifier: no commits found in the repository.");
       process.exit(1);
     }
+
+    if (!storedHead) {
+      await writeHead(cwd, toSha);
+      console.log(`test-verifier: HEAD initialized at ${toSha}`);
+      return;
+    }
+
     if (storedHead === toSha) {
       console.log("test-verifier: no new commits to check.");
       return;
