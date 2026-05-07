@@ -21,6 +21,17 @@ export async function getCurrentCommitSha(cwd?: string): Promise<string | null> 
   return result.stdout.toString().trim();
 }
 
+export async function getMainBranchMergeBase(cwd?: string): Promise<string | null> {
+  const dir = cwd ?? ".";
+  for (const branch of ["main", "master"]) {
+    const result = await $`git merge-base ${branch} HEAD`.cwd(dir).quiet().nothrow();
+    if (result.exitCode === 0) {
+      return result.stdout.toString().trim();
+    }
+  }
+  return null;
+}
+
 export async function getRelatedProdFiles(
   commitSha: string,
   testFile: string,

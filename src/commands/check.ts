@@ -4,6 +4,7 @@ import { $ } from "bun";
 import { loadConfig } from "../config";
 import {
   getCurrentCommitSha,
+  getMainBranchMergeBase,
   getDiffBetweenCommits,
   getRelatedProdFiles,
   getStagedDiff,
@@ -110,19 +111,26 @@ export async function check(
     }
 
     if (!storedHead) {
-      await writeHead(cwd, toSha);
-      console.log(`test-verifier: HEAD initialized at ${toSha}`);
-      return;
-    }
-
-    if (storedHead === toSha) {
+      const mergeBase = await getMainBranchMergeBase(cwd);
+      const initSha = mergeBase ?? toSha;
+      await writeHead(cwd, initSha);
+      if (mergeBase && mergeBase !== toSha) {
+        console.log(`test-verifier: HEAD initialized at merge-base ${initSha} (main branch)`);
+        fromSha = initSha;
+        toLabel = toSha;
+        rawDiff = await getDiffBetweenCommits(fromSha, toSha, diffGlobs, cwd);
+      } else {
+        console.log(`test-verifier: HEAD initialized at ${initSha}`);
+        return;
+      }
+    } else if (storedHead === toSha) {
       console.log("test-verifier: no new commits to check.");
       return;
+    } else {
+      fromSha = storedHead;
+      toLabel = toSha;
+      rawDiff = await getDiffBetweenCommits(fromSha, toSha, diffGlobs, cwd);
     }
-
-    fromSha = storedHead;
-    toLabel = toSha;
-    rawDiff = await getDiffBetweenCommits(fromSha, toSha, diffGlobs, cwd);
   } else {
     const currentSha = await getCurrentCommitSha(cwd);
     if (!currentSha) {
