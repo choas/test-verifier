@@ -87,7 +87,21 @@ function displayFile(index: number, total: number, file: ReviewableFile): void {
   }
 }
 
-export async function review(cwd: string = process.cwd()): Promise<void> {
+const RISK_ASSESSMENT_RE = /\*\*Risk Assessment:\*\*\s*(SAFE|LOW|SUSPICIOUS|CRITICAL)/;
+
+function extractRiskAssessment(analysis: string): string | null {
+  const match = analysis.match(RISK_ASSESSMENT_RE);
+  return match ? match[1] : null;
+}
+
+export interface ReviewOptions {
+  approveSafe?: boolean;
+}
+
+export async function review(
+  cwd: string = process.cwd(),
+  options: ReviewOptions = {},
+): Promise<void> {
   const pendingFiles = await listByStatus(cwd, "pending");
 
   if (pendingFiles.length === 0) {
@@ -124,12 +138,6 @@ export async function review(cwd: string = process.cwd()): Promise<void> {
     return;
   }
 
-  console.log(`\n${enriched.length} file(s) ready for review.\n`);
-
-  const MAGENTA = "\x1b[35m";
-  const BG_MAGENTA = "\x1b[45m";
-
-  const rl = createInterface({ input: process.stdin, output: process.stdout });
   const { email, privateKey } = await loadSigningContext(cwd);
   const store = new VerificationStore(auditDir(cwd));
 
@@ -137,12 +145,53 @@ export async function review(cwd: string = process.cwd()): Promise<void> {
   let rejectedCount = 0;
   let needsFixCount = 0;
   let skippedCount = 0;
+  let autoApprovedCount = 0;
+
+  const interactive: ReviewableFile[] = [];
+
+  if (options.approveSafe) {
+    for (const file of enriched) {
+      const risk = extractRiskAssessment(file.parsed.analysis);
+      if (risk === "SAFE") {
+        const rationale = `auto-approved: LLM risk assessment is SAFE — ${file.parsed.analysis.match(/\*\*Summary:\*\*\s*(.+)/)?.[1] ?? "no concerns identified"}`;
+        const updated = signFile(privateKey, file.raw, "approved", email, rationale);
+        await writeFile(file.filePath, updated);
+        await moveToApproved(cwd, file.filename);
+        store.updateStatus(file.parsed.stub.id, "approved", email, rationale);
+        autoApprovedCount++;
+        approvedCount++;
+        console.log(
+          `  ${BG_GREEN}${BOLD} AUTO-APPROVED ${RESET} ${file.parsed.stub.test_file} (LLM: SAFE)`,
+        );
+      } else {
+        interactive.push(file);
+      }
+    }
+
+    if (autoApprovedCount > 0) {
+      console.log(`\n${autoApprovedCount} file(s) auto-approved (LLM risk: SAFE).`);
+    }
+  } else {
+    interactive.push(...enriched);
+  }
+
+  if (interactive.length > 0) {
+    console.log(`\n${interactive.length} file(s) ready for review.\n`);
+  }
+
+  const MAGENTA = "\x1b[35m";
+  const BG_MAGENTA = "\x1b[45m";
+
+  const rl =
+    interactive.length > 0
+      ? createInterface({ input: process.stdin, output: process.stdout })
+      : null;
 
   try {
-    for (let i = 0; i < enriched.length; i++) {
-      const file = enriched[i];
+    for (let i = 0; i < interactive.length; i++) {
+      const file = interactive[i];
 
-      displayFile(i, enriched.length, file);
+      displayFile(i, interactive.length, file);
 
       const prev = store.findByTestFile(file.parsed.stub.test_file);
       if (prev.length > 0) {
@@ -162,7 +211,7 @@ export async function review(cwd: string = process.cwd()): Promise<void> {
 
       let answer = "";
       while (!["a", "r", "f", "s"].includes(answer)) {
-        const input = await rl.question(
+        const input = await rl!.question(
           `\n${BOLD}[a]${RESET}pprove / ${BOLD}[r]${RESET}eject / ${BOLD}[f]${RESET} needs-fix / ${BOLD}[s]${RESET}kip ? `,
         );
         answer = input.trim().toLowerCase().charAt(0);
@@ -171,7 +220,7 @@ export async function review(cwd: string = process.cwd()): Promise<void> {
       switch (answer) {
         case "a": {
           const rationale =
-            (await rl.question(`  ${DIM}Rationale:${RESET} `)).trim() ||
+            (await rl!.question(`  ${DIM}Rationale:${RESET} `)).trim() ||
             "approved via interactive review";
           const updated = signFile(privateKey, file.raw, "approved", email, rationale);
           await writeFile(file.filePath, updated);
@@ -183,7 +232,7 @@ export async function review(cwd: string = process.cwd()): Promise<void> {
         }
         case "r": {
           const rationale =
-            (await rl.question(`  ${DIM}Rationale:${RESET} `)).trim() ||
+            (await rl!.question(`  ${DIM}Rationale:${RESET} `)).trim() ||
             "rejected via interactive review";
           const updated = signFile(privateKey, file.raw, "rejected", email, rationale);
           await writeFile(file.filePath, updated);
@@ -195,7 +244,7 @@ export async function review(cwd: string = process.cwd()): Promise<void> {
         }
         case "f": {
           const rationale =
-            (await rl.question(`  ${DIM}Rationale:${RESET} `)).trim() ||
+            (await rl!.question(`  ${DIM}Rationale:${RESET} `)).trim() ||
             "needs fix via interactive review";
           const updated = signFile(privateKey, file.raw, "needs_fix", email, rationale);
           await writeFile(file.filePath, updated);
@@ -213,7 +262,7 @@ export async function review(cwd: string = process.cwd()): Promise<void> {
       }
     }
   } finally {
-    rl.close();
+    rl?.close();
     store.close();
   }
 

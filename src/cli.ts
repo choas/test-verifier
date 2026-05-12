@@ -19,7 +19,9 @@ Commands:
                         --status <s>   Filter by status (pending|needs_fix|rejected|approved|resolved)
                         --all          Show all findings including resolved
   enrich              Enrich pending findings with LLM analysis
-  review              Interactively review pending findings
+  review [--approve-safe]
+                      Interactively review pending findings
+                        --approve-safe Auto-approve findings where LLM risk is SAFE
   approve <id>        Approve a pending finding
   reject <id>         Reject a pending finding
   needs-fix <id>      Mark a finding as needing a fix (blocks push)
@@ -224,7 +226,20 @@ switch (command) {
 
   case "review": {
     const { review } = await import("./commands/review");
-    await review();
+    let reviewFlags: ReturnType<typeof parseArgs>;
+    try {
+      reviewFlags = parseArgs({
+        args: Bun.argv.slice(3),
+        options: {
+          "approve-safe": { type: "boolean", default: false },
+        },
+        allowPositionals: true,
+        strict: true,
+      });
+    } catch (e) {
+      handleParseError(e, ["--approve-safe"]);
+    }
+    await review(process.cwd(), { approveSafe: !!reviewFlags.values["approve-safe"] });
     break;
   }
 
