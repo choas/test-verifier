@@ -5,3 +5,4 @@ node_modules/
 .test-verifier/*.sqlite-wal
 code_review_prompts.md
 temp_push.sh
+pull_report_*
