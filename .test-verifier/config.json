@@ -1,0 +1,67 @@
+{
+  "testGlobs": [
+    "**/*.test.ts",
+    "**/*.spec.ts",
+    "**/*.test.svelte.ts"
+  ],
+  "excludeGlobs": [
+    "**/node_modules/**"
+  ],
+  "llm": {
+    "provider": "ollama",
+    "model": "gemma4:31b-cloud",
+    "apiKeyEnv": "ANTHROPIC_API_KEY",
+    "relatedProdLookback": 0
+  },
+  "policy": {
+    "autoApprove": [
+      "SAFE"
+    ],
+    "requireHumanFor": [
+      "LOW",
+      "SUSPICIOUS",
+      "CRITICAL"
+    ],
+    "blockPushIfPending": true,
+    "blockMergeIfRejected": true
+  },
+  "rules": {
+    "matcherTransitions": {
+      "toBe->toEqual": "SUSPICIOUS",
+      "toBe->toBeDefined": "CRITICAL",
+      "toBe->toBeTruthy": "CRITICAL",
+      "toBe->toBeFalsy": "CRITICAL",
+      "toEqual->toMatchObject": "SUSPICIOUS",
+      "toEqual->toBeDefined": "CRITICAL",
+      "toStrictEqual->toEqual": "SUSPICIOUS",
+      "toStrictEqual->toMatchObject": "CRITICAL",
+      "toHaveLength->toBeDefined": "CRITICAL",
+      "toThrow->not.toThrow": "CRITICAL",
+      "toHaveBeenCalledTimes->toHaveBeenCalled": "SUSPICIOUS"
+    },
+    "tautology": {
+      "static": "CRITICAL",
+      "llmDetected": "SUSPICIOUS"
+    },
+    "snapshot": {
+      "inline": "SUSPICIOUS",
+      "pairedUpdate": "SUSPICIOUS",
+      "unpairedUpdate": "CRITICAL",
+      "deletion": "CRITICAL",
+      "maxDiffSizeForLLM": 10000,
+      "truncationStrategy": "head-tail"
+    },
+    "skipAnnotation": "CRITICAL",
+    "todoAnnotation": "CRITICAL",
+    "assertionRemoved": "CRITICAL"
+  },
+  "audit": {
+    "compactPeriod": "quarter",
+    "cacheTtlDays": 90,
+    "cacheMaxEntries": 5000,
+    "archiveRetentionDays": 365
+  },
+  "crypto": {
+    "signing": "ed25519"
+  }
+}

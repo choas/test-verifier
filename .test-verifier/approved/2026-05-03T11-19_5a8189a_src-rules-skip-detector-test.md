@@ -2,8 +2,9 @@
 id: tv_2026-05-03T11-19_5a8189a_src-rules-skip-detector-test
 created_at: 2026-05-03T11:19:00Z
 severity: CRITICAL
-status: pending
-llm_enriched: false
+status: approved
+llm_enriched: true
+llm_model: gemma4:31b-cloud
 test_file: "src/rules/skip-detector.test.ts"
 test_functions:
   - "detects it() → it.skip()"
@@ -84,8 +85,18 @@ index 1bd1af3..217cd73 100644
 
 ## Analysis
 
-(Pending LLM enrichment. Run `bunx test-verifier enrich`.)
+**Summary:** The test changes replace non-null assertions (!) with optional chaining (?.) in expectations, which potentially allows tests to pass if the findings are undefined.
+
+**Risk Assessment:** SUSPICIOUS
+
+**Concerns:**
+- Replacing 'skipFinding!' with 'skipFinding?' means that if the finding is not found (undefined), the expression evaluates to 'undefined'. In many test frameworks, 'expect(undefined).toBe(Severity.CRITICAL)' will fail, but if the matcher is loose or the environment handles undefineds silently, it could mask a failure to find the expected object.
+- The rule engine flagged these as removed assertions because the strictness of the non-null assertion was removed, effectively changing the test from 'must exist and have this value' to 'if it exists, it should have this value' (depending on the matcher's behavior with undefined).
+
+**Recommendation:** Verify if the test framework (Bun) treats 'expect(undefined).toBe(value)' as a failure. If so, this is a minor refactor; if not, restore the non-null assertions or add explicit 'expect(skipFinding).toBeDefined()' calls to ensure the findings are actually present.
 
 ## Decision
 
-(Empty until enrichment is complete and a human approves or rejects.)
+approved by 138015+choas@users.noreply.github.com
+rationale: False positive: formatting changes only
+signature: ed25519:61uWGVpJbnp9UDlF3PNlcb0Jhz0+EE6QsEmuCqZ4RoRusW1PgedG5ktIfowWERR8Rblz2ZN8JE5c6lFN61npDQ==

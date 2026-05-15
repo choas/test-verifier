@@ -2,8 +2,9 @@
 id: tv_2026-05-03T11-18_5a8189a_src-crypto-sign-verify-test
 created_at: 2026-05-03T11:18:59Z
 severity: CRITICAL
-status: pending
-llm_enriched: false
+status: approved
+llm_enriched: true
+llm_model: gemma4:31b-cloud
 test_file: "src/crypto/sign-verify.test.ts"
 test_functions:
   - "produces deterministic output"
@@ -119,46 +120,8 @@ index 0559d6d..20cf090 100644
 +      "dev@example.com",
 +      "safe to skip, covered by integration tests",
 +    );
-     expect(signed).toContain("## Decision");
-     expect(signed).toContain("approved by dev@example.com");
-     expect(signed).toContain("rationale: safe to skip, covered by integration tests");
-@@ -137,7 +157,13 @@ describe("signFile and verifyFile roundtrip", () => {
-   });
- 
-   test("verification fails if decision text is tampered", () => {
--    const signed = signFile(kp.privateKey, STUB_FILE, "approved", "dev@example.com", "legitimate reason");
-+    const signed = signFile(
-+      kp.privateKey,
-+      STUB_FILE,
-+      "approved",
-+      "dev@example.com",
-+      "legitimate reason",
-+    );
-     const tampered = signed.replace("legitimate reason", "tampered reason");
-     expect(verifyFile(kp.publicKey, tampered)).toBe(false);
-   });
-@@ -152,8 +178,13 @@ describe("signFile and verifyFile roundtrip", () => {
-   });
- 
-   test("throws if file has no diff_hash", () => {
--    const noDiffHash = STUB_FILE.replace("diff_hash: sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\n", "");
--    expect(() => signFile(kp.privateKey, noDiffHash, "approved", "dev@example.com", "reason")).toThrow("No diff_hash");
-+    const noDiffHash = STUB_FILE.replace(
-+      "diff_hash: sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\n",
-+      "",
-+    );
-+    expect(() =>
-+      signFile(kp.privateKey, noDiffHash, "approved", "dev@example.com", "reason"),
-+    ).toThrow("No diff_hash");
-   });
- 
-   test("throws if signed file has no signature", () => {
-```
+     expect(signed).toContain("## Decision
 
-## Analysis
-
-(Pending LLM enrichment. Run `bunx test-verifier enrich`.)
-
-## Decision
-
-(Empty until enrichment is complete and a human approves or rejects.)
+approved by 138015+choas@users.noreply.github.com
+rationale: auto-approved: LLM risk assessment is SAFE — The changes are purely cosmetic formatting updates (likely from the newly added Biome formatter) and do not remove or weaken any assertions.
+signature: ed25519:nI3xY0VxUnkI85xwM6hF+dXk0ASbxw09FMps9QclnvMl/4uN8Ai3kbb6lqA8jn7Ta1vOEoYFiKkVAyVSZUxJAw==
