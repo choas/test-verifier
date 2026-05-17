@@ -286,4 +286,90 @@ test('new test', () => {
     });
     expect(findings).toHaveLength(0);
   });
+
+  test("does not flag trailing comma changes", () => {
+    const before = `
+test('checks', () => {
+  expect(
+    maxSeverity([
+      finding(Severity.LOW),
+      finding(Severity.CRITICAL),
+    ]),
+  ).toBe(Severity.CRITICAL);
+});
+`;
+    const after = `
+test('checks', () => {
+  expect(
+    maxSeverity([finding(Severity.LOW), finding(Severity.CRITICAL)])
+  ).toBe(Severity.CRITICAL);
+});
+`;
+    const findings = detectAssertionRemoval({
+      beforeSource: before,
+      afterSource: after,
+    });
+    expect(findings).toHaveLength(0);
+  });
+
+  test("does not flag non-null assertion changed to optional chaining", () => {
+    const before = `
+test('checks', () => {
+  expect(result!.id).toBe("tv_test_001");
+  expect(result!.status).toBe("pending");
+});
+`;
+    const after = `
+test('checks', () => {
+  expect(result?.id).toBe("tv_test_001");
+  expect(result?.status).toBe("pending");
+});
+`;
+    const findings = detectAssertionRemoval({
+      beforeSource: before,
+      afterSource: after,
+    });
+    expect(findings).toHaveLength(0);
+  });
+
+  test("does not flag when inline comment is added", () => {
+    const before = `
+test('checks', () => {
+  expect(() => defineConfig({ rules: { assertionRemoved: "INVALID" as any } })).toThrow();
+});
+`;
+    const after = `
+test('checks', () => {
+  expect(() => defineConfig({
+    // biome-ignore lint/suspicious/noExplicitAny: testing invalid input
+    rules: { assertionRemoved: "INVALID" as any },
+  })).toThrow();
+});
+`;
+    const findings = detectAssertionRemoval({
+      beforeSource: before,
+      afterSource: after,
+    });
+    expect(findings).toHaveLength(0);
+  });
+
+  test("does not flag bracket to dot notation change", () => {
+    const before = `
+test('checks', () => {
+  expect(fm["id"]).toBe("test-id");
+  expect(fm["severity"]).toBe("CRITICAL");
+});
+`;
+    const after = `
+test('checks', () => {
+  expect(fm.id).toBe("test-id");
+  expect(fm.severity).toBe("CRITICAL");
+});
+`;
+    const findings = detectAssertionRemoval({
+      beforeSource: before,
+      afterSource: after,
+    });
+    expect(findings).toHaveLength(0);
+  });
 });

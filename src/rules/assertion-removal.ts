@@ -105,7 +105,20 @@ function flattenTests(blocks: TestBlock[], parentPath = ""): FlatTest[] {
 }
 
 function normalizeAssertionText(text: string): string {
-  return text.replace(/\s+/g, "");
+  let normalized = text;
+  // Strip single-line comments
+  normalized = normalized.replace(/\/\/[^\n]*/g, "");
+  // Strip multi-line comments
+  normalized = normalized.replace(/\/\*[\s\S]*?\*\//g, "");
+  // Remove all whitespace
+  normalized = normalized.replace(/\s+/g, "");
+  // Remove trailing commas before closing delimiters
+  normalized = normalized.replace(/,([)\]}])/g, "$1");
+  // Normalize optional chaining and non-null assertions to plain dot access
+  normalized = normalized.replace(/[!?]\./g, ".");
+  // Normalize bracket notation for simple identifiers: ["key"] → .key
+  normalized = normalized.replace(/\["(\w+)"\]/g, ".$1");
+  return normalized;
 }
 
 function findRemovedAssertions(before: Assertion[], after: Assertion[]): Assertion[] {
