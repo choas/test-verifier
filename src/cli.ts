@@ -10,10 +10,11 @@ Usage: test-verifier <command> [options]
 
 Commands:
   init                Initialize test-verifier for this repository
-  check [--staged|--uncommitted]
+  check [--staged|--uncommitted] [--verbose]
                       Analyze test changes and generate findings
                         --staged       Check staged (index) changes vs HEAD
                         --uncommitted  Check all uncommitted changes vs HEAD
+                        --verbose      Show which files are being checked
   list [--status <s>] [--all]
                       List findings (default: unresolved only)
                         --status <s>   Filter by status (pending|needs_fix|rejected|approved|resolved)
@@ -159,12 +160,13 @@ switch (command) {
         options: {
           staged: { type: "boolean", default: false },
           uncommitted: { type: "boolean", default: false },
+          verbose: { type: "boolean", default: false },
         },
         allowPositionals: true,
         strict: true,
       });
     } catch (e) {
-      handleParseError(e, ["--staged", "--uncommitted"]);
+      handleParseError(e, ["--staged", "--uncommitted", "--verbose"]);
     }
     if (checkFlags.values.staged && checkFlags.values.uncommitted) {
       console.error("Error: --staged and --uncommitted are mutually exclusive.");
@@ -175,7 +177,7 @@ switch (command) {
       : checkFlags.values.uncommitted
         ? "uncommitted"
         : "committed";
-    await check(process.cwd(), mode);
+    await check(process.cwd(), mode, { verbose: !!checkFlags.values.verbose });
     break;
   }
 

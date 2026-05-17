@@ -88,10 +88,16 @@ function collectTestFunctionNames(blocks: TestBlock[]): string[] {
   return names;
 }
 
+export interface CheckOptions {
+  verbose?: boolean;
+}
+
 export async function check(
   cwd: string = process.cwd(),
   mode: CheckMode = "committed",
+  options: CheckOptions = {},
 ): Promise<void> {
+  const { verbose = false } = options;
   const config = await loadConfig(cwd);
   await ensureAuditDir(cwd);
 
@@ -164,8 +170,16 @@ export async function check(
   let resolvedCount = 0;
 
   try {
+    if (verbose) {
+      console.log(`test-verifier: checking ${fileDiffs.length} file(s) [${mode}]`);
+    }
+
     for (const fileDiff of fileDiffs) {
       const testFilePath = fileDiff.newPath;
+
+      if (verbose) {
+        console.log(`  checking ${testFilePath}`);
+      }
 
       const beforeContent = await getFileAtCommit(fromSha, fileDiff.oldPath, cwd);
       let afterContent: string;
