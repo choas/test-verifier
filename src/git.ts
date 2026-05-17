@@ -32,6 +32,12 @@ export async function getMainBranchMergeBase(cwd?: string): Promise<string | nul
   return null;
 }
 
+export async function getEmptyTreeHash(cwd?: string): Promise<string> {
+  const dir = cwd ?? ".";
+  const result = await $`git hash-object -t tree /dev/null`.cwd(dir).quiet();
+  return result.stdout.toString().trim();
+}
+
 export async function getRelatedProdFiles(
   commitSha: string,
   testFile: string,

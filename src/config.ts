@@ -107,11 +107,22 @@ export function configPath(cwd: string): string {
   return `${cwd}/${CONFIG_PATH}`;
 }
 
+const STALE_TEST_GLOBS = new Set(["**/*.test.ts", "**/*.spec.ts", "**/*.test.svelte.ts"]);
+
+function isStaleTestGlobs(globs: unknown): boolean {
+  if (!Array.isArray(globs)) return false;
+  if (globs.length !== STALE_TEST_GLOBS.size) return false;
+  return globs.every((g) => typeof g === "string" && STALE_TEST_GLOBS.has(g));
+}
+
 export async function loadConfig(cwd: string = process.cwd()): Promise<TestVerifierConfig> {
   const filepath = configPath(cwd);
   const file = Bun.file(filepath);
   if (await file.exists()) {
     const raw = await file.json();
+    if (isStaleTestGlobs(raw.testGlobs)) {
+      delete raw.testGlobs;
+    }
     return configSchema.parse(raw);
   }
   return configSchema.parse({});

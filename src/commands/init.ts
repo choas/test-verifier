@@ -58,7 +58,8 @@ async function ensureConfigJson(cwd: string): Promise<void> {
   if (await file.exists()) return;
 
   const defaults = configSchema.parse({});
-  await writeFile(cfgPath, `${JSON.stringify(defaults, null, 2)}\n`);
+  const { testGlobs: _t, excludeGlobs: _e, ...persistedDefaults } = defaults;
+  await writeFile(cfgPath, `${JSON.stringify(persistedDefaults, null, 2)}\n`);
   console.log("Created .test-verifier/config.json with default settings");
 }
 

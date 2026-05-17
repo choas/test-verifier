@@ -5,6 +5,7 @@ import { loadConfig } from "../config";
 import {
   getCurrentCommitSha,
   getMainBranchMergeBase,
+  getEmptyTreeHash,
   getDiffBetweenCommits,
   getRelatedProdFiles,
   getStagedDiff,
@@ -118,17 +119,18 @@ export async function check(
 
     if (!storedHead) {
       const mergeBase = await getMainBranchMergeBase(cwd);
-      const initSha = mergeBase ?? toSha;
-      await writeHead(cwd, initSha);
       if (mergeBase && mergeBase !== toSha) {
-        console.log(`test-verifier: HEAD initialized at merge-base ${initSha} (main branch)`);
-        fromSha = initSha;
+        fromSha = mergeBase;
         toLabel = toSha;
+        console.log(`test-verifier: scanning from merge-base ${mergeBase}`);
         rawDiff = await getDiffBetweenCommits(fromSha, toSha, diffGlobs, cwd);
       } else {
-        console.log(`test-verifier: HEAD initialized at ${initSha}`);
-        return;
+        fromSha = await getEmptyTreeHash(cwd);
+        toLabel = toSha;
+        console.log("test-verifier: initial scan of all test files");
+        rawDiff = await getDiffBetweenCommits(fromSha, toSha, diffGlobs, cwd);
       }
+      await writeHead(cwd, toSha);
     } else if (storedHead === toSha) {
       console.log("test-verifier: no new commits to check.");
       return;
