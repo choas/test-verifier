@@ -5,7 +5,21 @@ import { Severity } from "./types";
 describe("defineConfig", () => {
   test("returns defaults when called with no arguments", () => {
     const config = defineConfig();
-    expect(config.testGlobs).toEqual(["**/*.test.ts", "**/*.spec.ts", "**/*.test.svelte.ts"]);
+    expect(config.testGlobs).toEqual([
+      "**/*.test.ts",
+      "**/*.spec.ts",
+      "**/*.test.js",
+      "**/*.spec.js",
+      "**/*.test.tsx",
+      "**/*.spec.tsx",
+      "**/*.test.jsx",
+      "**/*.spec.jsx",
+      "**/*.test.mts",
+      "**/*.spec.mts",
+      "**/*.test.mjs",
+      "**/*.spec.mjs",
+      "**/*.test.svelte.ts",
+    ]);
     expect(config.excludeGlobs).toEqual(["**/node_modules/**"]);
     expect(config.llm.provider).toBe("anthropic");
     expect(config.llm.model).toBe("claude-sonnet-4-7");
@@ -19,7 +33,21 @@ describe("defineConfig", () => {
 
   test("returns defaults when called with empty object", () => {
     const config = defineConfig({});
-    expect(config.testGlobs).toEqual(["**/*.test.ts", "**/*.spec.ts", "**/*.test.svelte.ts"]);
+    expect(config.testGlobs).toEqual([
+      "**/*.test.ts",
+      "**/*.spec.ts",
+      "**/*.test.js",
+      "**/*.spec.js",
+      "**/*.test.tsx",
+      "**/*.spec.tsx",
+      "**/*.test.jsx",
+      "**/*.spec.jsx",
+      "**/*.test.mts",
+      "**/*.spec.mts",
+      "**/*.test.mjs",
+      "**/*.spec.mjs",
+      "**/*.test.svelte.ts",
+    ]);
   });
 
   test("overrides specific fields while keeping other defaults", () => {

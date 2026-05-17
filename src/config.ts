@@ -69,7 +69,23 @@ const cryptoInner = z.object({
 });
 
 export const configSchema = z.object({
-  testGlobs: z.array(z.string()).default(["**/*.test.ts", "**/*.spec.ts", "**/*.test.svelte.ts"]),
+  testGlobs: z
+    .array(z.string())
+    .default([
+      "**/*.test.ts",
+      "**/*.spec.ts",
+      "**/*.test.js",
+      "**/*.spec.js",
+      "**/*.test.tsx",
+      "**/*.spec.tsx",
+      "**/*.test.jsx",
+      "**/*.spec.jsx",
+      "**/*.test.mts",
+      "**/*.spec.mts",
+      "**/*.test.mjs",
+      "**/*.spec.mjs",
+      "**/*.test.svelte.ts",
+    ]),
   excludeGlobs: z.array(z.string()).default(["**/node_modules/**"]),
   llm: llmInner.default(() => llmInner.parse({})),
   policy: policyInner.default(() => policyInner.parse({})),
