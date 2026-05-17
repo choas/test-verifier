@@ -338,6 +338,73 @@ test('async negation', async () => {
     expect(blocks[0].assertions[0].matcher).toBe("resolves.not.toBe");
   });
 
+  test("extracts assert.equal as assertion", () => {
+    const source = `
+test('uses node:assert', () => {
+  const result = add(1, 2);
+  assert.equal(result, 3);
+});
+`;
+    const blocks = extractTestBlocks(source);
+    expect(blocks).toHaveLength(1);
+    expect(blocks[0].assertions).toHaveLength(1);
+    expect(blocks[0].assertions[0].matcher).toBe("assert.equal");
+  });
+
+  test("extracts multiple node:assert methods", () => {
+    const source = `
+test('multiple assert calls', () => {
+  assert.ok(result);
+  assert.equal(result.status, 200);
+  assert.deepEqual(result.body, { id: 1 });
+  assert.match(result.message, /success/);
+});
+`;
+    const blocks = extractTestBlocks(source);
+    expect(blocks[0].assertions).toHaveLength(4);
+    expect(blocks[0].assertions[0].matcher).toBe("assert.ok");
+    expect(blocks[0].assertions[1].matcher).toBe("assert.equal");
+    expect(blocks[0].assertions[2].matcher).toBe("assert.deepEqual");
+    expect(blocks[0].assertions[3].matcher).toBe("assert.match");
+  });
+
+  test("extracts bare assert() call", () => {
+    const source = `
+test('bare assert', () => {
+  assert(value !== null);
+});
+`;
+    const blocks = extractTestBlocks(source);
+    expect(blocks[0].assertions).toHaveLength(1);
+    expect(blocks[0].assertions[0].matcher).toBe("assert");
+  });
+
+  test("extracts mixed expect and assert assertions", () => {
+    const source = `
+test('mixed assertions', () => {
+  expect(a).toBe(1);
+  assert.equal(b, 2);
+});
+`;
+    const blocks = extractTestBlocks(source);
+    expect(blocks[0].assertions).toHaveLength(2);
+    expect(blocks[0].assertions[0].matcher).toBe("toBe");
+    expect(blocks[0].assertions[1].matcher).toBe("assert.equal");
+  });
+
+  test("extracts assert.strictEqual and assert.throws", () => {
+    const source = `
+test('strict and throws', () => {
+  assert.strictEqual(result, 42);
+  assert.throws(() => badFn(), /error/);
+});
+`;
+    const blocks = extractTestBlocks(source);
+    expect(blocks[0].assertions).toHaveLength(2);
+    expect(blocks[0].assertions[0].matcher).toBe("assert.strictEqual");
+    expect(blocks[0].assertions[1].matcher).toBe("assert.throws");
+  });
+
   test("handles multiple sibling describes", () => {
     const source = `
 describe('module A', () => {

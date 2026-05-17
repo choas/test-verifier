@@ -177,6 +177,48 @@ function checkSameIdentifierAssertions(block: TestBlockInfo, severity: Severity)
   return findings;
 }
 
+const NODE_ASSERT_METHODS = new Set([
+  "ok",
+  "equal",
+  "notEqual",
+  "strictEqual",
+  "notStrictEqual",
+  "deepEqual",
+  "notDeepEqual",
+  "deepStrictEqual",
+  "notDeepStrictEqual",
+  "match",
+  "doesNotMatch",
+  "throws",
+  "doesNotThrow",
+  "rejects",
+  "doesNotReject",
+  "fail",
+  "ifError",
+]);
+
+function isNodeAssertCall(call: CallExpression): boolean {
+  const expr = call.getExpression();
+
+  if (expr.isKind(SyntaxKind.PropertyAccessExpression)) {
+    const methodName = expr.getName();
+    const obj = expr.getExpression();
+    if (
+      obj.isKind(SyntaxKind.Identifier) &&
+      obj.getText() === "assert" &&
+      NODE_ASSERT_METHODS.has(methodName)
+    ) {
+      return true;
+    }
+  }
+
+  if (expr.isKind(SyntaxKind.Identifier) && expr.getText() === "assert") {
+    return true;
+  }
+
+  return false;
+}
+
 function checkNoAssertions(block: TestBlockInfo, severity: Severity): Finding[] {
   let hasAssertion = false;
 
@@ -187,6 +229,11 @@ function checkNoAssertions(block: TestBlockInfo, severity: Severity): Finding[] 
     const expr = call.getExpression();
 
     if (isExpectCall(call)) {
+      hasAssertion = true;
+      return;
+    }
+
+    if (isNodeAssertCall(call)) {
       hasAssertion = true;
       return;
     }

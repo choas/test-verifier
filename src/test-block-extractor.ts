@@ -227,7 +227,7 @@ function collectAssertions(node: Node): Assertion[] {
   node.forEachDescendant((descendant) => {
     if (!descendant.isKind(SyntaxKind.CallExpression)) return;
 
-    const matcher = resolveExpectChain(descendant);
+    const matcher = resolveExpectChain(descendant) ?? resolveNodeAssertCall(descendant);
     if (matcher) {
       assertions.push({
         matcher,
@@ -238,6 +238,48 @@ function collectAssertions(node: Node): Assertion[] {
   });
 
   return assertions;
+}
+
+const NODE_ASSERT_METHODS = new Set([
+  "ok",
+  "equal",
+  "notEqual",
+  "strictEqual",
+  "notStrictEqual",
+  "deepEqual",
+  "notDeepEqual",
+  "deepStrictEqual",
+  "notDeepStrictEqual",
+  "match",
+  "doesNotMatch",
+  "throws",
+  "doesNotThrow",
+  "rejects",
+  "doesNotReject",
+  "fail",
+  "ifError",
+]);
+
+function resolveNodeAssertCall(call: CallExpression): string | null {
+  const expr = call.getExpression();
+
+  if (expr.isKind(SyntaxKind.PropertyAccessExpression)) {
+    const methodName = expr.getName();
+    const obj = expr.getExpression();
+    if (
+      obj.isKind(SyntaxKind.Identifier) &&
+      obj.getText() === "assert" &&
+      NODE_ASSERT_METHODS.has(methodName)
+    ) {
+      return `assert.${methodName}`;
+    }
+  }
+
+  if (expr.isKind(SyntaxKind.Identifier) && expr.getText() === "assert") {
+    return "assert";
+  }
+
+  return null;
 }
 
 function resolveExpectChain(call: CallExpression): string | null {

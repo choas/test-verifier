@@ -172,6 +172,70 @@ test('has async assertion', async () => {
       const findings = detectTautologies(source);
       expect(findings).toHaveLength(0);
     });
+
+    test("does not flag test with assert.equal", () => {
+      const source = `
+test('uses node:assert', () => {
+  const result = add(1, 2);
+  assert.equal(result, 3);
+});`;
+      const findings = detectTautologies(source);
+      expect(findings).toHaveLength(0);
+    });
+
+    test("does not flag test with assert.ok", () => {
+      const source = `
+test('uses assert.ok', () => {
+  assert.ok(isValid());
+});`;
+      const findings = detectTautologies(source);
+      expect(findings).toHaveLength(0);
+    });
+
+    test("does not flag test with assert.deepEqual", () => {
+      const source = `
+test('uses assert.deepEqual', () => {
+  assert.deepEqual(getObj(), { a: 1 });
+});`;
+      const findings = detectTautologies(source);
+      expect(findings).toHaveLength(0);
+    });
+
+    test("does not flag test with assert.match", () => {
+      const source = `
+test('uses assert.match', () => {
+  assert.match(getMessage(), /hello/);
+});`;
+      const findings = detectTautologies(source);
+      expect(findings).toHaveLength(0);
+    });
+
+    test("does not flag test with bare assert()", () => {
+      const source = `
+test('uses bare assert', () => {
+  assert(result !== null);
+});`;
+      const findings = detectTautologies(source);
+      expect(findings).toHaveLength(0);
+    });
+
+    test("does not flag test with assert.strictEqual", () => {
+      const source = `
+test('uses assert.strictEqual', () => {
+  assert.strictEqual(result, expected);
+});`;
+      const findings = detectTautologies(source);
+      expect(findings).toHaveLength(0);
+    });
+
+    test("does not flag test with assert.throws", () => {
+      const source = `
+test('uses assert.throws', () => {
+  assert.throws(() => riskyFn(), /error/);
+});`;
+      const findings = detectTautologies(source);
+      expect(findings).toHaveLength(0);
+    });
   });
 
   describe("truthy-mock: mockReturnValue is always-truthy for non-trivial signatures", () => {
