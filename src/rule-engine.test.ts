@@ -194,7 +194,7 @@ describe("runRuleEngine", () => {
     expect(overrideResult.findings[0].severity).toBe(Severity.SUSPICIOUS);
   });
 
-  it.skip("respects matcher transition table overrides", () => {
+  it("respects matcher transition table overrides", () => {
     const before = `
       import { it, expect } from "vitest";
       it("checks equality", () => {
